@@ -51,9 +51,9 @@ export async function POST(req: NextRequest) {
 
     response.cookies.set("refresh_token", newRefreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production" && req.nextUrl.protocol === "https:",
       sameSite: "lax",
-      path: "/api/auth",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60,
     });
 
