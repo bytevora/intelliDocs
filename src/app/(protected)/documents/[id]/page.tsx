@@ -150,24 +150,26 @@ export default function DocumentEditorPage({
   return (
     <div className="h-screen bg-background flex flex-col selection:bg-primary/20 overflow-hidden">
       {/* ── Top Navigation Bar ── */}
-      <header className="sticky top-0 z-50 flex items-center justify-between h-12 px-4 bg-background/90 backdrop-blur-sm border-b border-border">
-        {/* Left: Doc name + Library + New */}
+      <header className="flex-shrink-0 z-50 flex items-center justify-between h-12 px-4 bg-background/90 backdrop-blur-sm border-b border-border">
+        {/* Left: Brand + Library + New */}
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-foreground truncate max-w-[200px]" title={title || "Untitled Document"}>
-            {title || "Untitled Document"}
-          </span>
+          <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+              <span className="text-[10px] font-bold text-primary-foreground tracking-widest">ID</span>
+            </div>
+            <span className="text-sm font-bold tracking-tight text-foreground">
+              IntelliDocs
+              <span className="ml-1.5 text-[9px] font-mono px-1 py-0.5 rounded-sm bg-primary/10 text-primary border border-primary/20 hidden sm:inline-block">
+                Beta
+              </span>
+            </span>
+          </button>
 
           <span className="text-border">|</span>
 
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-            </svg>
-            Library
-          </button>
+          <span className="text-sm font-semibold text-foreground truncate max-w-[200px]" title={title || "Untitled Document"}>
+            {title || "Untitled Document"}
+          </span>
 
           <button
             onClick={() => setNewDocOpen(true)}
@@ -176,7 +178,7 @@ export default function DocumentEditorPage({
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            New Doc
+            New
           </button>
         </div>
 
@@ -249,27 +251,30 @@ export default function DocumentEditorPage({
           </button>
 
           {/* User avatar */}
-          <div className="ml-1 h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-[11px] font-bold text-primary-foreground shadow-sm">
+          <div className="ml-1 h-7 w-7 rounded-full bg-primary flex items-center justify-center text-[11px] font-bold text-primary-foreground shadow-sm">
             {user?.username?.charAt(0).toUpperCase() || "?"}
           </div>
         </div>
       </header>
 
       {/* ── Document Canvas with Sidebar ── */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-hidden min-h-0">
         {/* Left: Visuals sidebar */}
-        <VisualsSidebar
-          documentId={id}
-          authFetch={authFetch}
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
+        <div className="print:hidden">
+          <VisualsSidebar
+            documentId={id}
+            authFetch={authFetch}
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          />
+        </div>
 
         {/* Right: Document editor */}
-        <div className="flex-1 flex justify-center px-4 sm:px-8 py-8 sm:py-10 overflow-y-auto">
-        <div className="w-full max-w-[1100px] bg-card rounded-2xl min-h-[calc(100vh-5rem)] shadow-xl dark:shadow-2xl dark:shadow-black/25 border border-border dark:ring-1 dark:ring-white/[0.04] flex flex-col overflow-hidden p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto">
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-8 py-8 sm:py-10">
+        <div className="w-full bg-card rounded-2xl min-h-[calc(100vh-5rem)] shadow-xl dark:shadow-2xl dark:shadow-black/25 border border-border dark:ring-1 dark:ring-white/[0.04] flex flex-col p-4 sm:p-6">
           {/* Ruled area inset from card edges */}
-          <div className="doc-ruled-area flex-1 flex flex-col rounded-xl overflow-hidden">
+          <div className="doc-ruled-area flex-1 flex flex-col rounded-xl">
             {/* Title row — icon in left margin, title on lines 2-3 */}
             <div
               className="relative z-[2]"
@@ -363,6 +368,7 @@ export default function DocumentEditorPage({
             </div>
           </div>
           </div>
+        </div>
         </div>
         </div>
       </main>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { visuals, visualCache } from "@/lib/db/schema";
-import { requireAuth, requireDocumentOwner, handleApiError } from "@/lib/api/guards";
+import { requireAuth, requireDocumentAccess, handleApiError } from "@/lib/api/guards";
 import { generateVisual, generateMindmapForTemplate } from "@/lib/ai/gemini";
 import { HORIZONTAL_MINDMAP_TEMPLATES, VERTICAL_MINDMAP_TEMPLATES, LEFT_MINDMAP_TEMPLATES, RIGHT_MINDMAP_TEMPLATES } from "@/components/visuals/mindmap-templates";
 import { eq, sql } from "drizzle-orm";
@@ -24,7 +24,7 @@ export async function POST(
     const user = await requireAuth(req);
     const { id: documentId } = await params;
 
-    requireDocumentOwner(documentId, user.sub);
+    requireDocumentAccess(documentId, user.sub, "editor");
 
     const body = await req.json();
     const { sourceText, visualType, templateId, forceRefresh } = body;

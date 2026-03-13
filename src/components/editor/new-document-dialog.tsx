@@ -97,8 +97,8 @@ export function NewDocumentDialog({
       >
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-xl font-extrabold flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
-              <Sparkles className="h-4.5 w-4.5 text-white" />
+            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+              <Sparkles className="h-4.5 w-4.5 text-primary-foreground" />
             </div>
             New Document
           </DialogTitle>

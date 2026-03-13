@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { visuals } from "@/lib/db/schema";
-import { requireAuth, requireDocumentOwner, handleApiError } from "@/lib/api/guards";
+import { requireAuth, requireDocumentAccess, handleApiError } from "@/lib/api/guards";
 import { eq, desc } from "drizzle-orm";
 
 export async function GET(
@@ -12,7 +12,7 @@ export async function GET(
     const user = await requireAuth(req);
     const { id: documentId } = await params;
 
-    requireDocumentOwner(documentId, user.sub);
+    requireDocumentAccess(documentId, user.sub, "viewer");
 
     const docVisuals = db
       .select()

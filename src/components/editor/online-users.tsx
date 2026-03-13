@@ -55,12 +55,12 @@ export function OnlineUsers({ provider, currentUserId }: OnlineUsersProps) {
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-white cursor-default"
             style={{ backgroundColor: user.color }}
-            title={user.name}
+            title={user.name || "Anonymous"}
           >
-            {user.name.charAt(0).toUpperCase()}
+            {(user.name || "?").charAt(0).toUpperCase()}
           </div>
           <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border">
-            {user.name}
+            {user.name || "Anonymous"}
           </div>
         </div>
       ))}

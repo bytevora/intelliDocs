@@ -62,6 +62,10 @@ export function TiptapEditor(props: TiptapEditorProps) {
         }),
         CollaborationCursor.configure({
           provider: props.provider!,
+          user: props.provider!.awareness.getLocalState()?.user ?? {
+            name: "Anonymous",
+            color: "#958DF1",
+          },
         }),
         CollaborationHistory,
       ]

@@ -117,13 +117,37 @@ export function CustomVisualRenderer({
         />
       );
     case "radar":
-      return <RadarChartRenderer data={parsed as RadarChartData} theme={theme} />;
+      return (
+        <RadarChartRenderer
+          data={parsed as RadarChartData}
+          theme={theme}
+          onDataChange={onCustomDataChange ? (newData) => onCustomDataChange(JSON.stringify(newData)) : undefined}
+        />
+      );
     case "scatter":
-      return <ScatterChartRenderer data={parsed as ScatterChartData} theme={theme} />;
+      return (
+        <ScatterChartRenderer
+          data={parsed as ScatterChartData}
+          theme={theme}
+          onDataChange={onCustomDataChange ? (newData) => onCustomDataChange(JSON.stringify(newData)) : undefined}
+        />
+      );
     case "heatmap":
-      return <HeatmapChartRenderer data={parsed as HeatmapChartData} theme={theme} />;
+      return (
+        <HeatmapChartRenderer
+          data={parsed as HeatmapChartData}
+          theme={theme}
+          onDataChange={onCustomDataChange ? (newData) => onCustomDataChange(JSON.stringify(newData)) : undefined}
+        />
+      );
     case "sankey":
-      return <SankeyChartRenderer data={parsed as SankeyChartData} theme={theme} />;
+      return (
+        <SankeyChartRenderer
+          data={parsed as SankeyChartData}
+          theme={theme}
+          onDataChange={onCustomDataChange ? (newData) => onCustomDataChange(JSON.stringify(newData)) : undefined}
+        />
+      );
     default:
       return (
         <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">

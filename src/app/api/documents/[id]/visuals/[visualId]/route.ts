@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { visuals } from "@/lib/db/schema";
-import { requireAuth, requireDocumentOwner, ApiError, handleApiError } from "@/lib/api/guards";
+import { requireAuth, requireDocumentAccess, ApiError, handleApiError } from "@/lib/api/guards";
 import { generateVisual } from "@/lib/ai/gemini";
 import { eq } from "drizzle-orm";
 import { VisualTheme, VisualType, ALL_VISUAL_TYPES } from "@/types";
@@ -30,7 +30,7 @@ export async function GET(
     const user = await requireAuth(req);
     const { id: documentId, visualId } = await params;
 
-    requireDocumentOwner(documentId, user.sub);
+    requireDocumentAccess(documentId, user.sub, "viewer");
     const visual = requireVisual(visualId, documentId);
 
     return NextResponse.json(visual);
@@ -47,7 +47,7 @@ export async function PUT(
     const user = await requireAuth(req);
     const { id: documentId, visualId } = await params;
 
-    requireDocumentOwner(documentId, user.sub);
+    requireDocumentAccess(documentId, user.sub, "editor");
     const visual = requireVisual(visualId, documentId);
 
     const body = await req.json();
@@ -135,7 +135,7 @@ export async function DELETE(
     const user = await requireAuth(req);
     const { id: documentId, visualId } = await params;
 
-    requireDocumentOwner(documentId, user.sub);
+    requireDocumentAccess(documentId, user.sub, "editor");
     requireVisual(visualId, documentId);
 
     db.delete(visuals).where(eq(visuals.id, visualId)).run();

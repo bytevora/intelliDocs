@@ -43,6 +43,7 @@ Structure rules:
 6. Generate 3-7 sections depending on topic complexity
 7. Content should be detailed, informative, and professionally written
 8. Total document length: 800-2000 words
+9. IMPORTANT: Add 3-4 empty paragraphs ({"type": "paragraph"}) as spacing between the text content and any subsequent sections. Specifically, after the introductory blockquote add 3 empty paragraphs before the first heading, and after each section's content (bullet list or paragraph) add 3 empty paragraphs before the next horizontalRule or heading. This ensures comfortable visual breathing room in the rendered document.
 
 Example structure for a listItem with bold label:
 {

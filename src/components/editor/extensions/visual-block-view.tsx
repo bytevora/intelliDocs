@@ -498,7 +498,7 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
 
         {/* ── Info panel ── */}
         {showInfo && visual && (
-          <div className="mt-2 rounded-lg border border-border bg-popover/95 backdrop-blur-md p-4 text-xs text-muted-foreground space-y-1.5 shadow-lg">
+          <div className="mt-2 rounded-lg border border-border bg-popover/95 backdrop-blur-md p-4 text-sm text-muted-foreground space-y-2 shadow-lg">
             <div className="flex justify-between">
               <span className="font-medium text-foreground">Visual Info</span>
               <button onClick={() => setShowInfo(false)} className="text-muted-foreground hover:text-foreground">

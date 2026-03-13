@@ -6,7 +6,7 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left panel — branding */}
-      <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-primary via-primary/90 to-primary/70 p-12 text-primary-foreground">
+      <div className="hidden lg:flex flex-col justify-between bg-primary p-12 text-primary-foreground">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">IntelliDocs</h1>
         </div>

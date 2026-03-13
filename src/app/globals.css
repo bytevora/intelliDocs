@@ -145,28 +145,41 @@
 }
 
 .collaboration-cursor__caret {
-  border-left: 1px solid;
-  border-right: 1px solid;
-  margin-left: -1px;
-  margin-right: -1px;
+  border-left: 2.5px solid;
+  margin-left: -1.5px;
   pointer-events: none;
   position: relative;
   word-break: normal;
+  animation: cursor-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cursor-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .collaboration-cursor__label {
-  border-radius: 3px 3px 3px 0;
+  border-radius: 6px 6px 6px 0;
   color: #fff;
-  font-size: 12px;
+  font-size: 11px;
   font-style: normal;
-  font-weight: 600;
-  left: -1px;
-  line-height: normal;
-  padding: 0.1rem 0.3rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  left: -1.5px;
+  line-height: 1;
+  padding: 0.2rem 0.45rem;
   position: absolute;
-  top: -1.4em;
+  top: -1.6em;
   user-select: none;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  animation: cursor-label-appear 0.2s ease-out forwards;
+}
+
+@keyframes cursor-label-appear {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Atmospheric Napkin AI Inspired Background */
@@ -393,11 +406,27 @@ foreignObject [contenteditable] *::selection {
   body, html {
     background: var(--background) !important;
     color: var(--foreground) !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Remove height/overflow constraints so full content is printed */
+  .h-screen {
+    height: auto !important;
+    overflow: visible !important;
   }
 
   main {
     padding: 0 !important;
     margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  main .flex-1.overflow-y-auto {
+    overflow: visible !important;
+    height: auto !important;
   }
 
   main > div {
@@ -425,6 +454,7 @@ foreignObject [contenteditable] *::selection {
 
   .doc-editor-prose .ProseMirror {
     padding-bottom: 0 !important;
+    min-height: auto !important;
   }
 
   [data-node-view-wrapper] .absolute {
@@ -433,11 +463,12 @@ foreignObject [contenteditable] *::selection {
 
   svg {
     max-width: 100% !important;
-    page-break-inside: avoid;
   }
 
+  /* Allow visuals to break across pages instead of leaving large gaps */
   [data-node-view-wrapper] {
-    page-break-inside: avoid;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 
   h1, h2, h3 {

@@ -65,7 +65,12 @@
       "Bash(find /Users/rohitranjan/my/temp/intelliDocs/src -type f -name \"*admin*\" 2>/dev/null | head -20)",
       "Bash(find /Users/rohitranjan/my/temp/intelliDocs/.env* 2>/dev/null | head -10)",
       "Bash(ls data/ 2>/dev/null; ls drizzle.config.* 2>/dev/null; cat package.json | grep -E \"drizzle|migrate\" 2>/dev/null)",
-      "Bash(sqlite3 data/intellidocs.db \"ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;\" 2>&1 || echo \"Column may already exist\")"
+      "Bash(sqlite3 data/intellidocs.db \"ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;\" 2>&1 || echo \"Column may already exist\")",
+      "Bash(ls -la \"/Users/rohitranjan/my/temp/intelliDocs/src/app/\\(protected\\)/\")",
+      "Bash(find /Users/rohitranjan/my/temp/intelliDocs -maxdepth 2 -name \"tailwind*\" -o -name \"postcss*\" 2>/dev/null | grep -v node_modules)",
+      "Bash(find /Users/rohitranjan/my/temp/intelliDocs/src -name \"README*\" -o -name \"*.md\" 2>/dev/null | head -10)",
+      "Bash(grep -r \"VisualEditPopup\\\\|visual-edit-popup\\\\|visualEditPopup\" src/ --include=\"*.tsx\" --include=\"*.ts\" 2>/dev/null | head -20)",
+      "Bash(find /Users/rohitranjan/my/temp/intelliDocs -name \"package.json\" -type f | head -1 | xargs cat | grep -A 20 \"dependencies\")"
     ]
   },
   "enabledPlugins": {
