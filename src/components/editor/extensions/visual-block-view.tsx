@@ -58,7 +58,7 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
   const [visual, setVisual] = useState<Visual | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [regenerating, setRegenerating] = useState(false);
+
   const [aspectRatio, setAspectRatio] = useState("");
   const visualContentRef = useRef<HTMLDivElement>(null);
 
@@ -114,23 +114,6 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
       }
     );
     if (res.ok) setVisual(await res.json());
-  };
-
-  const handleRegenerate = async () => {
-    setRegenerating(true);
-    try {
-      const res = await authFetch(
-        `/api/documents/${documentId}/visuals/${visualId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "regenerate" }),
-        }
-      );
-      if (res.ok) setVisual(await res.json());
-    } finally {
-      setRegenerating(false);
-    }
   };
 
   const handleDelete = async () => {
@@ -306,18 +289,6 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
 
             {/* Right: quick actions */}
             <div className="flex items-center gap-0.5">
-              {/* Sync / Regenerate */}
-              <button
-                onClick={handleRegenerate}
-                disabled={regenerating}
-                className="p-1.5 rounded hover:bg-accent/50 text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                title="Sync with text"
-              >
-                <svg className={`h-3.5 w-3.5 ${regenerating ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-
               {/* Delete */}
               <button
                 onClick={handleDelete}
@@ -346,19 +317,6 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
               </button>
             </div>
           </div>
-
-          {/* Regenerating overlay */}
-          {regenerating && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-xl">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Regenerating...
-              </div>
-            </div>
-          )}
 
           {/* ── Visual content ── */}
           <div ref={visualContentRef} className="p-6 pt-12 pb-8">
@@ -459,16 +417,6 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
             )}
 
             <CtxDivider />
-
-            {/* Sync with text */}
-            <CtxItem
-              icon={<SyncIcon />}
-              label="Sync with text"
-              onClick={() => {
-                handleRegenerate();
-                setCtxMenu(null);
-              }}
-            />
 
             {/* Info */}
             <CtxItem
@@ -589,14 +537,6 @@ function AspectIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-    </svg>
-  );
-}
-
-function SyncIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
     </svg>
   );
 }

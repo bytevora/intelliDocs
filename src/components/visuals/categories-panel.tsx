@@ -309,9 +309,31 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
     }
   }, [editor, dataChartGenerating, authFetch, documentId, onClose]);
 
-  const filteredCategories = search
-    ? CATEGORIES.filter((c) => c.label.toLowerCase().includes(search.toLowerCase()))
-    : CATEGORIES;
+  const filteredCategories = CATEGORIES.filter((c) => {
+    if (!c.active) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    if (c.label.toLowerCase().includes(q)) return true;
+    // Also match sub-items: chart types under "data", direction labels under "mindmap"
+    if (c.id === "data") return DATA_CHART_OPTIONS.some((opt) => opt.label.toLowerCase().includes(q));
+    if (c.id === "mindmap") return MINDMAP_DIRECTIONS.some((dir) => dir.label.toLowerCase().includes(q));
+    return false;
+  });
+
+  // Auto-expand a category when the search matches one of its sub-items (not the category name itself)
+  const searchAutoExpand = (() => {
+    if (!search) return null;
+    const q = search.toLowerCase();
+    for (const cat of filteredCategories) {
+      if (cat.label.toLowerCase().includes(q)) continue; // matched by name, no need to force expand
+      // matched by sub-item → auto-expand
+      return cat.id;
+    }
+    return null;
+  })();
+
+  // Effective expanded state: manual selection OR search-driven auto-expand
+  const isExpanded = (catId: string) => expandedCategory === catId || searchAutoExpand === catId;
 
   if (!open) return null;
 
@@ -384,7 +406,7 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
               }}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                 cat.active
-                  ? expandedCategory === cat.id
+                  ? isExpanded(cat.id)
                     ? "bg-white/[0.08] text-white/90"
                     : "text-white/60 hover:text-white/80 hover:bg-white/[0.04]"
                   : "text-white/25 cursor-default"
@@ -393,7 +415,7 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
               <span className="flex items-center gap-2">
                 {cat.active && (
                   <svg
-                    className={`h-3 w-3 transition-transform ${expandedCategory === cat.id ? "rotate-90" : ""}`}
+                    className={`h-3 w-3 transition-transform ${isExpanded(cat.id) ? "rotate-90" : ""}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -406,14 +428,18 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
             </button>
 
             {/* Data charts expanded content */}
-            {cat.id === "data" && expandedCategory === "data" && (
+            {cat.id === "data" && isExpanded("data") && (
               <div className="mt-1 ml-2 space-y-2">
                 <p className="text-[10px] font-medium text-white/40 uppercase tracking-wider px-1">
                   Select a chart type
                 </p>
                 <div className="grid grid-cols-4 gap-1.5">
-                  {DATA_CHART_OPTIONS.map((chart) => {
+                  {DATA_CHART_OPTIONS
+                    .filter((chart) => !searchAutoExpand || chart.label.toLowerCase().includes(search.toLowerCase()))
+                    .map((chart) => {
                     const isGenerating = dataChartGenerating === chart.id;
+                    const q = search?.toLowerCase() ?? "";
+                    const matchIdx = q ? chart.label.toLowerCase().indexOf(q) : -1;
                     return (
                       <button
                         key={chart.id}
@@ -422,7 +448,9 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
                         className={`group flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-all ${
                           isGenerating
                             ? "bg-violet-500/20 ring-1 ring-violet-500/40"
-                            : "hover:bg-white/[0.06] text-white/50 hover:text-white/80"
+                            : matchIdx >= 0
+                              ? "bg-violet-500/10 ring-1 ring-violet-500/30 text-white/80"
+                              : "hover:bg-white/[0.06] text-white/50 hover:text-white/80"
                         } ${dataChartGenerating && !isGenerating ? "opacity-40 cursor-not-allowed" : ""}`}
                         title={chart.label}
                       >
@@ -432,7 +460,9 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
                         <span className={`text-[8px] font-medium leading-tight text-center ${
                           isGenerating ? "text-violet-300" : ""
                         }`}>
-                          {chart.label}
+                          {matchIdx >= 0 ? (
+                            <>{chart.label.slice(0, matchIdx)}<span className="text-violet-300">{chart.label.slice(matchIdx, matchIdx + q.length)}</span>{chart.label.slice(matchIdx + q.length)}</>
+                          ) : chart.label}
                         </span>
                       </button>
                     );
@@ -445,11 +475,16 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
             )}
 
             {/* Mindmap expanded content */}
-            {cat.id === "mindmap" && expandedCategory === "mindmap" && (
+            {cat.id === "mindmap" && isExpanded("mindmap") && (
               <div className="mt-1 ml-2 space-y-3">
                 {/* Direction icons */}
                 <div className="flex items-center gap-1.5 px-1">
-                  {MINDMAP_DIRECTIONS.map((dir) => (
+                  {MINDMAP_DIRECTIONS
+                    .filter((dir) => !searchAutoExpand || dir.label.toLowerCase().includes(search.toLowerCase()))
+                    .map((dir) => {
+                    const q = search?.toLowerCase() ?? "";
+                    const matchIdx = q ? dir.label.toLowerCase().indexOf(q) : -1;
+                    return (
                     <div key={dir.id} className="relative">
                       <button
                         onClick={() => {
@@ -464,14 +499,18 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
                           dir.available
                             ? selectedDirection === dir.id
                               ? "bg-violet-500/20 ring-1 ring-violet-500/40"
-                              : "hover:bg-white/[0.06]"
+                              : matchIdx >= 0
+                                ? "bg-violet-500/10 ring-1 ring-violet-500/30"
+                                : "hover:bg-white/[0.06]"
                             : "opacity-40 cursor-default"
                         }`}
                         title={dir.available ? dir.label : `${dir.label} — Coming soon`}
                       >
                         <DirectionIcon dir={dir.id} active={selectedDirection === dir.id} />
                         <span className={`text-[9px] ${selectedDirection === dir.id ? "text-violet-300" : "text-white/40"}`}>
-                          {dir.label}
+                          {matchIdx >= 0 ? (
+                            <>{dir.label.slice(0, matchIdx)}<span className="text-violet-300">{dir.label.slice(matchIdx, matchIdx + q.length)}</span>{dir.label.slice(matchIdx + q.length)}</>
+                          ) : dir.label}
                         </span>
                       </button>
                       {tooltip === dir.id && (
@@ -480,7 +519,8 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Template grid — shown when horizontal or vertical is selected */}
