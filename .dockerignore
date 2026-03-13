@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.gitignore
+.env*
+data/
+admin-credentials.txt
+*.md
+docs/
+.DS_Store
+npm-debug.log*
+.vercel

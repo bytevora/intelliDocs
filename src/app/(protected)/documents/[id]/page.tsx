@@ -1,0 +1,354 @@
+"use client";
+
+import { useEffect, useState, useCallback, use } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
+import { useAutoSave } from "@/hooks/use-auto-save";
+import { useCollaboration } from "@/hooks/use-collaboration";
+import { TiptapEditor } from "@/components/editor/tiptap-editor";
+import { DocumentProvider } from "@/components/editor/document-context";
+import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
+import { OnlineUsers } from "@/components/editor/online-users";
+import { ShareDialog } from "@/components/sharing/share-dialog";
+import { NewDocumentDialog } from "@/components/editor/new-document-dialog";
+
+import { exportAsPdf } from "@/lib/export";
+
+interface DocumentData {
+  id: string;
+  title: string;
+  content: string;
+  ownerId: string;
+  permission?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export default function DocumentEditorPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const { user, authFetch } = useAuth();
+  const router = useRouter();
+  const [doc, setDoc] = useState<DocumentData | null>(null);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState<object | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [categoriesPanelOpen, setCategoriesPanelOpen] = useState(false);
+  const [newDocOpen, setNewDocOpen] = useState(false);
+
+  const { debouncedSave, status } = useAutoSave(id, authFetch);
+
+  const { ydoc, provider, connected, synced, failed } = useCollaboration(
+    id,
+    user?.id ?? null,
+    user?.username ?? null
+  );
+
+  // Only treat as collaborative if connected, synced, and not failed
+  const collabReady = !!ydoc && !!provider && synced && !failed;
+  const collabPending = !!ydoc && !!provider && !synced && !failed;
+  const isCollaborative = !!ydoc && !!provider && !failed;
+
+  useEffect(() => {
+    if (!provider) return;
+    const handler = (newTitle: string) => setTitle(newTitle);
+    provider.socket.on("title-update", handler);
+    return () => { provider.socket.off("title-update", handler); };
+  }, [provider]);
+
+  useEffect(() => {
+    async function fetchDoc() {
+      try {
+        const res = await authFetch(`/api/documents/${id}`);
+        if (!res.ok) {
+          setError(res.status === 404 ? "Document not found" : "Failed to load");
+          return;
+        }
+        const data = await res.json();
+        setDoc(data);
+        setTitle(data.title);
+        try {
+          setContent(JSON.parse(data.content));
+        } catch {
+          setContent({ type: "doc", content: [{ type: "paragraph" }] });
+        }
+      } catch {
+        setError("Failed to load document");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDoc();
+  }, [id, authFetch]);
+
+  const handleTitleChange = useCallback(
+    (newTitle: string) => {
+      setTitle(newTitle);
+      if (isCollaborative) {
+        provider.socket.emit("title-update", newTitle);
+      } else {
+        debouncedSave({ title: newTitle });
+      }
+    },
+    [isCollaborative, provider, debouncedSave]
+  );
+
+  const handleContentUpdate = useCallback(
+    (json: object) => {
+      setContent(json);
+      debouncedSave({ content: json });
+    },
+    [debouncedSave]
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-4xl mx-auto px-6 py-20 space-y-6">
+          <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+          <div className="h-10 w-3/4 bg-muted rounded animate-pulse" />
+          <div className="h-4 w-full bg-muted rounded animate-pulse" />
+          <div className="h-64 w-full bg-muted rounded animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">{error}</p>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="px-4 py-2 text-sm text-foreground bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
+          >
+            Back to Library
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const editable = doc?.permission !== "viewer";
+  return (
+    <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20">
+      {/* ── Top Navigation Bar ── */}
+      <header className="sticky top-0 z-50 flex items-center justify-between h-12 px-4 bg-background/90 backdrop-blur-sm border-b border-border">
+        {/* Left: Library + New */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+            </svg>
+            Library
+          </button>
+
+          <button
+            onClick={() => setNewDocOpen(true)}
+            className="flex items-center gap-1.5 text-sm font-medium text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-lg px-3 py-1.5 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            New Doc
+          </button>
+        </div>
+
+        {/* Center: Save status */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+          {!isCollaborative && status === "saving" && (
+            <span className="text-[11px] text-muted-foreground animate-pulse">Saving...</span>
+          )}
+          {!isCollaborative && status === "saved" && (
+            <span className="text-[11px] text-muted-foreground/60">Saved</span>
+          )}
+          {!isCollaborative && status === "error" && (
+            <span className="text-[11px] text-red-500">Save failed</span>
+          )}
+          {isCollaborative && (
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-red-500"}`} />
+          )}
+        </div>
+
+        {/* Right: Collab + Share + Export + Avatar */}
+        <div className="flex items-center gap-2">
+          {isCollaborative && provider && user && (
+            <OnlineUsers provider={provider} currentUserId={user.id} />
+          )}
+
+          {doc?.permission === "viewer" && (
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted rounded px-2 py-0.5">
+              View only
+            </span>
+          )}
+
+          {doc?.permission === "owner" && (
+            <button
+              onClick={() => setShareOpen(true)}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.375 21c-2.331 0-4.512-.645-6.375-1.765Z" />
+              </svg>
+              Share
+            </button>
+          )}
+
+          {editable && (
+            <button
+              onClick={() => setCategoriesPanelOpen(!categoriesPanelOpen)}
+              className={`flex items-center gap-1.5 text-sm transition-colors ${
+                categoriesPanelOpen
+                  ? "text-violet-400 hover:text-violet-300"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Visual categories"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+              </svg>
+              Visuals
+            </button>
+          )}
+
+          <button
+            onClick={exportAsPdf}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            title="Export as PDF"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            PDF
+          </button>
+
+          {/* User avatar */}
+          <div className="ml-1 h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-[11px] font-bold text-primary-foreground shadow-sm">
+            {user?.username?.charAt(0).toUpperCase() || "?"}
+          </div>
+        </div>
+      </header>
+
+      {/* ── Document Canvas ── */}
+      <main className="flex-1 flex justify-center px-4 sm:px-8 py-8 sm:py-10">
+        <div className="w-full max-w-[1100px] bg-card rounded-2xl min-h-[calc(100vh-5rem)] shadow-xl dark:shadow-2xl dark:shadow-black/25 border border-border dark:ring-1 dark:ring-white/[0.04] flex flex-col overflow-hidden p-4 sm:p-6">
+          {/* Ruled area inset from card edges */}
+          <div className="doc-ruled-area flex-1 flex flex-col rounded-xl overflow-hidden">
+            {/* Title row — icon in left margin, title on lines 2-3 */}
+            <div
+              className="relative z-[2]"
+              style={{
+                paddingTop: "calc(var(--rule-spacing) * 1)",
+                height: "calc(var(--rule-spacing) * 4)",
+              }}
+            >
+              {/* Document icon — positioned in the left margin gutter */}
+              <div
+                className="absolute flex items-center justify-center text-muted-foreground"
+                style={{
+                  right: "calc(100% - var(--margin-left) + 0.75rem)",
+                  top: "calc(var(--rule-spacing) * 1)",
+                  height: "calc(var(--rule-spacing) * 2)",
+                }}
+              >
+                <div className="h-9 w-9 rounded-lg bg-muted border border-border flex items-center justify-center">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  </svg>
+                </div>
+              </div>
+              {/* Title input — right of the margin line, spanning 2 ruled lines */}
+              <div
+                className="absolute pr-8 sm:pr-12"
+                style={{
+                  left: "calc(var(--margin-left) + 1.5rem)",
+                  right: 0,
+                  top: "calc(var(--rule-spacing) * 1)",
+                  height: "calc(var(--rule-spacing) * 2)",
+                }}
+              >
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder="Untitled Document"
+                  readOnly={!editable}
+                  className="w-full h-full text-[2rem] sm:text-[2.5rem] font-bold tracking-tight bg-transparent border-none outline-none placeholder:text-muted-foreground text-foreground leading-none flex items-center"
+                />
+              </div>
+            </div>
+
+            {/* Content sits to the right of the margin line */}
+            <div className="pl-[calc(var(--margin-left)+1.5rem)] pr-8 sm:pr-12 pb-16 flex-1 flex flex-col relative z-[2]">
+            {/* Editor */}
+            <div className="flex-1 doc-editor-prose">
+              {collabReady && ydoc && provider ? (
+                <EditorErrorBoundary
+                  fallback={
+                    content ? (
+                      <DocumentProvider documentId={id} authFetch={authFetch}>
+                        <TiptapEditor
+                          content={content}
+                          onUpdate={handleContentUpdate}
+                          editable={editable}
+                          showCategoriesPanel={categoriesPanelOpen}
+                          onCloseCategoriesPanel={() => setCategoriesPanelOpen(false)}
+                        />
+                      </DocumentProvider>
+                    ) : null
+                  }
+                >
+                  <DocumentProvider documentId={id} authFetch={authFetch}>
+                    <TiptapEditor
+                      key={ydoc.clientID}
+                      ydoc={ydoc}
+                      provider={provider}
+                      editable={editable}
+                    />
+                  </DocumentProvider>
+                </EditorErrorBoundary>
+              ) : collabPending ? (
+                <div className="space-y-5 py-6 animate-pulse">
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-4 bg-muted rounded w-1/2" />
+                  <div className="h-4 bg-muted rounded w-5/6" />
+                  <div className="h-4 bg-muted rounded w-2/3" />
+                  <p className="text-xs text-muted-foreground pt-4">Syncing...</p>
+                </div>
+              ) : content ? (
+                <DocumentProvider documentId={id} authFetch={authFetch}>
+                  <TiptapEditor
+                    content={content}
+                    onUpdate={handleContentUpdate}
+                    editable={editable}
+                  />
+                </DocumentProvider>
+              ) : null}
+            </div>
+          </div>
+          </div>
+        </div>
+      </main>
+
+      {doc?.permission === "owner" && (
+        <ShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          documentId={id}
+          authFetch={authFetch}
+        />
+      )}
+
+      <NewDocumentDialog open={newDocOpen} onOpenChange={setNewDocOpen} />
+    </div>
+  );
+}
