@@ -58,7 +58,9 @@
       "Bash(wc -l /Users/rohitranjan/my/temp/intelliDocs/src/components/visuals/*.tsx | tail -1)",
       "Bash(grep -n \"catch.*{\" /Users/rohitranjan/my/temp/intelliDocs/src/app/api/auth/*.ts | wc -l)",
       "Bash(ls -la /Users/rohitranjan/my/temp/intelliDocs/src/components/visuals/ | grep -E \"\\\\.tsx$|\\\\.ts$\")",
-      "Bash(ls /Users/rohitranjan/my/temp/intelliDocs/.env* 2>/dev/null; cat /Users/rohitranjan/my/temp/intelliDocs/package.json | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}, indent=2\\)\\)\" 2>/dev/null | grep -E '\\(vitest|pino|jest|testing\\)' || echo \"No test/log frameworks found\")"
+      "Bash(ls /Users/rohitranjan/my/temp/intelliDocs/.env* 2>/dev/null; cat /Users/rohitranjan/my/temp/intelliDocs/package.json | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}, indent=2\\)\\)\" 2>/dev/null | grep -E '\\(vitest|pino|jest|testing\\)' || echo \"No test/log frameworks found\")",
+      "Bash(chmod +x /Users/rohitranjan/my/temp/intelliDocs/build.sh)",
+      "Bash(docker build:*)"
     ]
   },
   "enabledPlugins": {

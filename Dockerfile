@@ -3,7 +3,7 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache python3 make g++
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm install
 
 # Stage 2: Build the application
 FROM node:20-alpine AS builder
