@@ -70,7 +70,8 @@
       "Bash(find /Users/rohitranjan/my/temp/intelliDocs -maxdepth 2 -name \"tailwind*\" -o -name \"postcss*\" 2>/dev/null | grep -v node_modules)",
       "Bash(find /Users/rohitranjan/my/temp/intelliDocs/src -name \"README*\" -o -name \"*.md\" 2>/dev/null | head -10)",
       "Bash(grep -r \"VisualEditPopup\\\\|visual-edit-popup\\\\|visualEditPopup\" src/ --include=\"*.tsx\" --include=\"*.ts\" 2>/dev/null | head -20)",
-      "Bash(find /Users/rohitranjan/my/temp/intelliDocs -name \"package.json\" -type f | head -1 | xargs cat | grep -A 20 \"dependencies\")"
+      "Bash(find /Users/rohitranjan/my/temp/intelliDocs -name \"package.json\" -type f | head -1 | xargs cat | grep -A 20 \"dependencies\")",
+      "Bash(npx -y acorn-jsx --ecma2020 src/components/visuals/categories-panel.tsx 2>/dev/null; node -e \"try { require\\('@babel/parser'\\).parse\\(require\\('fs'\\).readFileSync\\('src/components/visuals/categories-panel.tsx','utf8'\\), {sourceType:'module',plugins:['jsx','typescript']}\\); console.log\\('Syntax OK'\\) } catch\\(e\\) { console.log\\('Syntax error:', e.message\\) }\")"
     ]
   },
   "enabledPlugins": {
