@@ -93,11 +93,29 @@ export function CustomVisualRenderer({
         />
       );
     case "line":
-      return <LineChartRenderer data={parsed as LineChartData} theme={theme} />;
+      return (
+        <LineChartRenderer
+          data={parsed as LineChartData}
+          theme={theme}
+          onDataChange={onCustomDataChange ? (newData) => onCustomDataChange(JSON.stringify(newData)) : undefined}
+        />
+      );
     case "area":
-      return <AreaChartRenderer data={parsed as AreaChartData} theme={theme} />;
+      return (
+        <AreaChartRenderer
+          data={parsed as AreaChartData}
+          theme={theme}
+          onDataChange={onCustomDataChange ? (newData) => onCustomDataChange(JSON.stringify(newData)) : undefined}
+        />
+      );
     case "donut":
-      return <DonutChartRenderer data={parsed as DonutChartData} theme={theme} />;
+      return (
+        <DonutChartRenderer
+          data={parsed as DonutChartData}
+          theme={theme}
+          onDataChange={onCustomDataChange ? (newData) => onCustomDataChange(JSON.stringify(newData)) : undefined}
+        />
+      );
     case "radar":
       return <RadarChartRenderer data={parsed as RadarChartData} theme={theme} />;
     case "scatter":

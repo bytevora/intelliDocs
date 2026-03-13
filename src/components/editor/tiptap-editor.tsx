@@ -6,6 +6,7 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import { VisualBlock } from "./extensions/visual-block";
 import { CollaborationHistory } from "./extensions/collaboration-history";
 import { VisualSuggestions } from "./visual-suggestions";
@@ -58,6 +59,9 @@ export function TiptapEditor(props: TiptapEditorProps) {
         Collaboration.configure({
           document: props.ydoc!,
           field: "default",
+        }),
+        CollaborationCursor.configure({
+          provider: props.provider!,
         }),
         CollaborationHistory,
       ]

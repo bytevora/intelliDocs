@@ -25,6 +25,13 @@ export async function requireAuth(req: NextRequest): Promise<JWTPayload> {
   return user;
 }
 
+/** Require the authenticated user to have the admin role. Throws 401/403. */
+export async function requireAdmin(req: NextRequest): Promise<JWTPayload> {
+  const user = await requireAuth(req);
+  if (user.role !== "admin") throw new ApiError(403, "Admin access required");
+  return user;
+}
+
 /** Fetch a document by ID. Throws 404 if not found. */
 export function requireDocument(documentId: string) {
   const doc = db

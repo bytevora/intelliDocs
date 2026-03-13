@@ -32,6 +32,7 @@ import {
   ArrowRight,
   TrendingUp,
   Clock,
+  Shield,
 } from "lucide-react";
 
 function timeAgo(dateStr: string): string {
@@ -105,7 +106,7 @@ export default function DashboardPage() {
   const recentDoc = ownDocs.length > 0 ? ownDocs[0] : null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground relative selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen bg-background text-foreground relative selection:bg-primary/20 selection:text-primary overflow-x-hidden">
       {/* Background Glowing Accents */}
       <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[50%] bg-primary/8 blur-[150px] rounded-full pointer-events-none" />
@@ -230,6 +231,17 @@ export default function DashboardPage() {
                     {loading ? "..." : sharedDocs.length}
                   </span>
                 </button>
+                {user?.role === "admin" && (
+                  <button
+                    onClick={() => router.push("/admin/users")}
+                    className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-sm font-semibold transition-all text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Shield className="h-4 w-4" />
+                      Manage Users
+                    </div>
+                  </button>
+                )}
               </nav>
 
               {/* Quick Stats Mini-Bento */}

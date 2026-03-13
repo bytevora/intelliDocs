@@ -375,6 +375,16 @@ foreignObject [contenteditable] *::selection {
     display: none !important;
   }
 
+  /* Hide all fixed-position overlays (visual generator panel, modals, etc.) */
+  .fixed {
+    display: none !important;
+  }
+
+  /* Hide elements explicitly marked for export exclusion */
+  [data-export-ignore] {
+    display: none !important;
+  }
+
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -385,6 +395,11 @@ foreignObject [contenteditable] *::selection {
     color: var(--foreground) !important;
   }
 
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
   main > div {
     box-shadow: none !important;
     border: none !important;
@@ -393,10 +408,15 @@ foreignObject [contenteditable] *::selection {
     background-image: none !important;
     border-radius: 0 !important;
     min-height: auto !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    padding: 0 !important;
   }
 
   .doc-ruled-area {
     background-image: none !important;
+    overflow: visible !important;
+    --margin-left: 0rem !important;
   }
 
   .doc-ruled-area::before {
@@ -405,11 +425,6 @@ foreignObject [contenteditable] *::selection {
 
   .doc-editor-prose .ProseMirror {
     padding-bottom: 0 !important;
-  }
-
-  main {
-    padding: 0 !important;
-    margin: 0 !important;
   }
 
   [data-node-view-wrapper] .absolute {

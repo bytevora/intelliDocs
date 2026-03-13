@@ -30,6 +30,7 @@ export async function seedAdmin() {
       email: "admin@intellidocs.local",
       password: hashedPassword,
       role: "admin",
+      isActive: true,
       createdAt: now,
       updatedAt: now,
     })

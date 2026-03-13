@@ -40,6 +40,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!user.isActive) {
+      return NextResponse.json(
+        { error: "Your account has been deactivated. Please contact an administrator." },
+        { status: 403 }
+      );
+    }
+
     const accessToken = await signAccessToken({
       sub: user.id,
       username: user.username,

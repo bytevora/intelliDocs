@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSave } from "@/hooks/use-auto-save";
@@ -11,6 +11,7 @@ import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { OnlineUsers } from "@/components/editor/online-users";
 import { ShareDialog } from "@/components/sharing/share-dialog";
 import { NewDocumentDialog } from "@/components/editor/new-document-dialog";
+import { VisualsSidebar } from "@/components/editor/visuals-sidebar";
 
 import { exportAsPdf } from "@/lib/export";
 
@@ -40,7 +41,9 @@ export default function DocumentEditorPage({
   const [shareOpen, setShareOpen] = useState(false);
   const [categoriesPanelOpen, setCategoriesPanelOpen] = useState(false);
   const [newDocOpen, setNewDocOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   const { debouncedSave, status } = useAutoSave(id, authFetch);
 
   const { ydoc, provider, connected, synced, failed } = useCollaboration(
@@ -53,6 +56,14 @@ export default function DocumentEditorPage({
   const collabReady = !!ydoc && !!provider && synced && !failed;
   const collabPending = !!ydoc && !!provider && !synced && !failed;
   const isCollaborative = !!ydoc && !!provider && !failed;
+
+  // Auto-resize title textarea to fit content
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [title]);
 
   useEffect(() => {
     if (!provider) return;
@@ -137,11 +148,17 @@ export default function DocumentEditorPage({
 
   const editable = doc?.permission !== "viewer";
   return (
-    <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20">
+    <div className="h-screen bg-background flex flex-col selection:bg-primary/20 overflow-hidden">
       {/* ── Top Navigation Bar ── */}
       <header className="sticky top-0 z-50 flex items-center justify-between h-12 px-4 bg-background/90 backdrop-blur-sm border-b border-border">
-        {/* Left: Library + New */}
+        {/* Left: Doc name + Library + New */}
         <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold text-foreground truncate max-w-[200px]" title={title || "Untitled Document"}>
+            {title || "Untitled Document"}
+          </span>
+
+          <span className="text-border">|</span>
+
           <button
             onClick={() => router.push("/dashboard")}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
@@ -238,8 +255,18 @@ export default function DocumentEditorPage({
         </div>
       </header>
 
-      {/* ── Document Canvas ── */}
-      <main className="flex-1 flex justify-center px-4 sm:px-8 py-8 sm:py-10">
+      {/* ── Document Canvas with Sidebar ── */}
+      <main className="flex-1 flex overflow-hidden">
+        {/* Left: Visuals sidebar */}
+        <VisualsSidebar
+          documentId={id}
+          authFetch={authFetch}
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+
+        {/* Right: Document editor */}
+        <div className="flex-1 flex justify-center px-4 sm:px-8 py-8 sm:py-10 overflow-y-auto">
         <div className="w-full max-w-[1100px] bg-card rounded-2xl min-h-[calc(100vh-5rem)] shadow-xl dark:shadow-2xl dark:shadow-black/25 border border-border dark:ring-1 dark:ring-white/[0.04] flex flex-col overflow-hidden p-4 sm:p-6">
           {/* Ruled area inset from card edges */}
           <div className="doc-ruled-area flex-1 flex flex-col rounded-xl overflow-hidden">
@@ -248,7 +275,7 @@ export default function DocumentEditorPage({
               className="relative z-[2]"
               style={{
                 paddingTop: "calc(var(--rule-spacing) * 1)",
-                height: "calc(var(--rule-spacing) * 4)",
+                minHeight: "calc(var(--rule-spacing) * 4)",
               }}
             >
               {/* Document icon — positioned in the left margin gutter */}
@@ -268,21 +295,21 @@ export default function DocumentEditorPage({
               </div>
               {/* Title input — right of the margin line, spanning 2 ruled lines */}
               <div
-                className="absolute pr-8 sm:pr-12"
+                className="pr-8 sm:pr-12"
                 style={{
-                  left: "calc(var(--margin-left) + 1.5rem)",
-                  right: 0,
-                  top: "calc(var(--rule-spacing) * 1)",
-                  height: "calc(var(--rule-spacing) * 2)",
+                  marginLeft: "calc(var(--margin-left) + 1.5rem)",
+                  paddingTop: "calc(var(--rule-spacing) * 1)",
+                  minHeight: "calc(var(--rule-spacing) * 2)",
                 }}
               >
-                <input
-                  type="text"
+                <textarea
+                  ref={titleRef}
                   value={title}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   placeholder="Untitled Document"
                   readOnly={!editable}
-                  className="w-full h-full text-[2rem] sm:text-[2.5rem] font-bold tracking-tight bg-transparent border-none outline-none placeholder:text-muted-foreground text-foreground leading-none flex items-center"
+                  rows={1}
+                  className="w-full text-[2rem] sm:text-[2.5rem] font-bold tracking-tight bg-transparent border-none outline-none placeholder:text-muted-foreground text-foreground leading-tight resize-none overflow-hidden"
                 />
               </div>
             </div>
@@ -336,6 +363,7 @@ export default function DocumentEditorPage({
             </div>
           </div>
           </div>
+        </div>
         </div>
       </main>
 

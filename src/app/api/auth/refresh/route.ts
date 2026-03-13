@@ -38,6 +38,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!user.isActive) {
+      const response = NextResponse.json(
+        { error: "Account deactivated" },
+        { status: 403 }
+      );
+      response.cookies.delete("refresh_token");
+      return response;
+    }
+
     const accessToken = await signAccessToken({
       sub: user.id,
       username: user.username,

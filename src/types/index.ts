@@ -3,6 +3,13 @@ export interface User {
   username: string;
   email: string;
   role: "admin" | "user";
+  isActive?: boolean;
+}
+
+export interface AdminUser extends User {
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthResponse {

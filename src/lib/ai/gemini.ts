@@ -2,7 +2,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
   VisualType,
   RenderMode,
-  MERMAID_TYPES,
   ALL_VISUAL_TYPES,
   MindmapNode,
 } from "@/types";
@@ -48,42 +47,14 @@ export function extractJSON(raw: string): unknown {
 
 const VISUAL_SYSTEM_PROMPT = `You are a text-to-visualization expert. Given text, generate the best visual representation.
 
-You must output ONLY valid JSON. The output format depends on the visual type chosen:
-
-For MERMAID types (flowchart, timeline, sequence, pie), output:
-{"visualType": "<type>", "mermaidSyntax": "<valid Mermaid.js syntax string>"}
-
-For ALL OTHER types, output:
+You must output ONLY valid JSON in this format:
 {"visualType": "<type>", "customData": {<structured data matching the schema below>}}
 
 ═══════════════════════════════════════
-MERMAID TYPES
+MINDMAP
 ═══════════════════════════════════════
 
-1. "flowchart" — Process flows, decision trees, algorithms, step-by-step procedures
-   mermaidSyntax: "flowchart TD\\n  A[Start] --> B{Decision}\\n  B -->|Yes| C[Action 1]\\n  B -->|No| D[Action 2]"
-   Use "flowchart TD" (top-down) or "flowchart LR" (left-right). Max 15 nodes.
-
-2. "timeline" — Chronological events, milestones, history, project phases
-   mermaidSyntax: "timeline\\n  title Title\\n  section Phase\\n    Event 1 : Detail"
-   IMPORTANT: NEVER use colons inside event names or time values (write "9.15am" NOT "9:15am"). Each section must have at least one event. Indent events with 4 spaces.
-
-3. "sequence" — Interactions between entities, API calls, message flows
-   mermaidSyntax: "sequenceDiagram\\n  Alice->>Bob: Hello\\n  Bob-->>Alice: Hi"
-
-4. "pie" — Simple proportions, distributions, market share, budget breakdown
-   mermaidSyntax: "pie title Title\\n  \\"Slice A\\" : 30\\n  \\"Slice B\\" : 70"
-
-Mermaid rules:
-- Do NOT wrap mermaid syntax in code fences or backticks
-- Avoid special characters (colons, semicolons, quotes, brackets) inside labels — they break Mermaid parsing. Replace with safe alternatives.
-- Keep diagrams clear and concise with descriptive but short labels
-
-═══════════════════════════════════════
-CUSTOM INFOGRAPHIC TYPES
-═══════════════════════════════════════
-
-5. "mindmap" — Hierarchical concepts, brainstorming, topic exploration, knowledge maps
+1. "mindmap" — Hierarchical concepts, brainstorming, topic exploration, knowledge maps
 customData schema:
 {
   "title": "Main Topic",
@@ -102,84 +73,11 @@ customData schema:
 }
 Rules: 3-6 main branches, 1-4 sub-topics each. Max 3 levels deep. Labels under 30 characters.
 
-6. "comparison" — Side-by-side comparison of products, options, technologies (2-4 items)
-customData schema:
-{
-  "title": "Title",
-  "items": [
-    { "name": "Item A", "points": ["Point 1", "Point 2", "Point 3"], "color": "#3b82f6" },
-    { "name": "Item B", "points": ["Point 1", "Point 2", "Point 3"], "color": "#ef4444" }
-  ]
-}
-Colors: use from #3b82f6, #ef4444, #10b981, #f59e0b, #8b5cf6, #ec4899.
-
-7. "funnel" — Sales funnels, conversion pipelines, filtering processes
-customData schema:
-{
-  "title": "Title",
-  "stages": [
-    { "label": "Stage 1", "value": "1000", "percentage": 100 },
-    { "label": "Stage 2", "value": "750", "percentage": 75 },
-    { "label": "Stage 3", "value": "300", "percentage": 30 }
-  ]
-}
-Percentages should decrease from top to bottom.
-
-8. "stats" — Key metrics, KPIs, statistics, performance numbers (3-6 metrics)
-customData schema:
-{
-  "title": "Title",
-  "metrics": [
-    { "label": "Metric", "value": "42%", "change": "+5%", "trend": "up" },
-    { "label": "Metric 2", "value": "$1.2M", "change": "-2%", "trend": "down" }
-  ]
-}
-Trend: "up", "down", or "neutral". Determine from context.
-
-9. "swot" — SWOT analysis, strategic assessment, pros/cons evaluation
-customData schema:
-{
-  "title": "Title",
-  "strengths": ["Point 1", "Point 2"],
-  "weaknesses": ["Point 1", "Point 2"],
-  "opportunities": ["Point 1", "Point 2"],
-  "threats": ["Point 1", "Point 2"]
-}
-Provide 2-5 items per quadrant.
-
-10. "orgchart" — Organizational hierarchies, team structures, taxonomies
-customData schema:
-{
-  "title": "Title",
-  "root": {
-    "name": "CEO",
-    "role": "Chief Executive",
-    "children": [
-      { "name": "CTO", "role": "Technology", "children": [] },
-      { "name": "CFO", "role": "Finance", "children": [] }
-    ]
-  }
-}
-Max 3 levels deep.
-
-11. "venn" — Overlapping concepts, shared characteristics, set relationships (2-3 sets)
-customData schema:
-{
-  "title": "Title",
-  "sets": [
-    { "label": "Set A", "items": ["Item 1", "Item 2"] },
-    { "label": "Set B", "items": ["Item 3", "Item 4"] }
-  ],
-  "intersections": [
-    { "sets": [0, 1], "items": ["Shared item"] }
-  ]
-}
-
 ═══════════════════════════════════════
 DATA CHART TYPES
 ═══════════════════════════════════════
 
-12. "bar" — Numerical data across categories, rankings, quantities (bar/column charts)
+2. "bar" — Numerical data across categories, rankings, quantities (bar/column charts)
 customData schema:
 {
   "title": "Chart Title",
@@ -193,7 +91,7 @@ customData schema:
 }
 layout: "vertical", "horizontal", "grouped", or "stacked". Use "grouped" for comparing, "stacked" for part-of-whole, "horizontal" when labels are long. Single series = one key, multi-series = multiple keys.
 
-13. "line" — Trends over time, growth, progression (line charts)
+3. "line" — Trends over time, growth, progression (line charts)
 customData schema:
 {
   "title": "Chart Title",
@@ -208,7 +106,7 @@ customData schema:
   ]
 }
 
-14. "area" — Cumulative trends, volume over time (filled area charts)
+4. "area" — Cumulative trends, volume over time (filled area charts)
 customData schema:
 {
   "title": "Chart Title",
@@ -223,7 +121,7 @@ customData schema:
   ]
 }
 
-15. "donut" — Proportions of a whole, percentage breakdowns (donut/pie charts)
+5. "donut" — Proportions of a whole, percentage breakdowns (donut/pie charts)
 customData schema:
 {
   "title": "Chart Title",
@@ -235,7 +133,7 @@ customData schema:
 }
 variant: "full" (360°) or "half" (180° semicircle gauge).
 
-16. "radar" — Multi-dimensional comparison across axes (spider/radar charts, 3-8 axes)
+6. "radar" — Multi-dimensional comparison across axes (spider/radar charts, 3-8 axes)
 customData schema:
 {
   "title": "Chart Title",
@@ -247,7 +145,7 @@ customData schema:
   ]
 }
 
-17. "scatter" — Correlation between two variables, distribution patterns
+7. "scatter" — Correlation between two variables, distribution patterns
 customData schema:
 {
   "title": "Chart Title",
@@ -262,7 +160,7 @@ customData schema:
   ]
 }
 
-18. "heatmap" — Matrix data, schedules, intensity across two dimensions
+8. "heatmap" — Matrix data, schedules, intensity across two dimensions
 customData schema:
 {
   "title": "Chart Title",
@@ -277,7 +175,7 @@ customData schema:
   ]
 }
 
-19. "sankey" — Flow between categories, resource allocation, user journeys
+9. "sankey" — Flow between categories, resource allocation, user journeys
 customData schema:
 {
   "title": "Chart Title",
@@ -296,11 +194,13 @@ GENERAL RULES
 ═══════════════════════════════════════
 
 1. If the user specifies a visual type, use that type. Otherwise, choose the type that MOST naturally represents the information.
-2. Extract key information from the text — be concise but comprehensive.
-3. Keep titles concise (under 50 characters) and labels short (under 40 characters).
-4. Use 3-8 data points for charts, 2-6 items for infographics.
-5. Extract REAL numerical data from text. If exact numbers aren't given, make reasonable estimates.
-6. Ensure all numeric values in data charts are actual numbers (not strings).`;
+2. Only use the visual types listed above — do not use any other type.
+3. Extract key information from the text — be concise but comprehensive.
+4. Keep titles concise (under 50 characters) and labels short (under 40 characters).
+5. Use 3-8 data points for charts, 3-6 branches for mindmaps.
+6. Extract REAL numerical data from text. If exact numbers aren't given, INVENT plausible representative numbers — NEVER refuse or say you cannot generate the chart. You MUST always output valid JSON.
+7. Ensure all numeric values in data charts are actual numbers (not strings).
+8. Even if the text has no obvious numerical data, derive categories and generate reasonable placeholder values. Every request MUST produce a valid JSON visualization — no exceptions, no apologies, no explanations.`;
 
 // ── Template-aware mindmap generation ────────────────────
 
@@ -326,10 +226,6 @@ interface GenerateResult {
   customData: string | null;
 }
 
-function getRenderMode(type: string): RenderMode {
-  return (MERMAID_TYPES as string[]).includes(type) ? "mermaid" : "custom";
-}
-
 // ── Core generation ──────────────────────────────────────
 
 async function generateFromPrompt(
@@ -342,10 +238,10 @@ async function generateFromPrompt(
 
   const model = genAI.getGenerativeModel({
     model: GEMINI_MODEL,
+    tools: [{ googleSearch: {} } as any],
     generationConfig: {
       temperature: 0.3,
       maxOutputTokens: 2000,
-      responseMimeType: "application/json",
     },
     systemInstruction: VISUAL_SYSTEM_PROMPT,
   });
@@ -362,19 +258,6 @@ async function generateFromPrompt(
   }
 
   const type = parsed.visualType as VisualType;
-  const renderMode = getRenderMode(type);
-
-  if (renderMode === "mermaid") {
-    if (!parsed.mermaidSyntax) {
-      throw new Error("Missing mermaidSyntax in Gemini response for mermaid type");
-    }
-    return {
-      visualType: type,
-      renderMode: "mermaid",
-      mermaidSyntax: parsed.mermaidSyntax as string,
-      customData: null,
-    };
-  }
 
   if (!parsed.customData) {
     throw new Error("Missing customData in Gemini response for custom type");

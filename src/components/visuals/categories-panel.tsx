@@ -200,13 +200,9 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
       editor.state.doc.descendants((node, pos) => {
         if (replaced) return false;
         if (node.type.name === "visualBlock" && node.attrs.visualId === trackRef.current) {
-          editor
-            .chain()
-            .focus()
-            .setNodeSelection(pos)
-            .deleteSelection()
-            .insertContent({ type: "visualBlock", attrs: { visualId } })
-            .run();
+          const tr = editor.state.tr;
+          tr.replaceWith(pos, pos + node.nodeSize, editor.schema.nodes.visualBlock.create({ visualId }));
+          editor.view.dispatch(tr);
           trackRef.current = visualId;
           replaced = true;
           return false;
@@ -217,12 +213,9 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
 
     // Insert after all existing visual blocks below the selected text
     const insertAt = getInsertPosition() ?? editor.state.doc.content.size - 1;
-    editor
-      .chain()
-      .focus()
-      .setTextSelection(insertAt)
-      .insertContent({ type: "visualBlock", attrs: { visualId } })
-      .run();
+    const tr = editor.state.tr;
+    tr.insert(insertAt, editor.schema.nodes.visualBlock.create({ visualId }));
+    editor.view.dispatch(tr);
 
     trackRef.current = visualId;
   }, [editor, getInsertPosition]);
@@ -234,7 +227,9 @@ export function CategoriesPanel({ editor, open, onClose }: CategoriesPanelProps)
     hoverInsertedVisualId.current = null;
     editor.state.doc.descendants((node, pos) => {
       if (node.type.name === "visualBlock" && node.attrs.visualId === hoverVisualId) {
-        editor.chain().focus().setNodeSelection(pos).deleteSelection().run();
+        const tr = editor.state.tr;
+        tr.delete(pos, pos + node.nodeSize);
+        editor.view.dispatch(tr);
         return false;
       }
     });

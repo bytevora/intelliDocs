@@ -61,7 +61,11 @@
       "Bash(ls /Users/rohitranjan/my/temp/intelliDocs/.env* 2>/dev/null; cat /Users/rohitranjan/my/temp/intelliDocs/package.json | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}, indent=2\\)\\)\" 2>/dev/null | grep -E '\\(vitest|pino|jest|testing\\)' || echo \"No test/log frameworks found\")",
       "Bash(chmod +x /Users/rohitranjan/my/temp/intelliDocs/build.sh)",
       "Bash(docker build:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "Bash(find /Users/rohitranjan/my/temp/intelliDocs/src -type f -name \"*admin*\" 2>/dev/null | head -20)",
+      "Bash(find /Users/rohitranjan/my/temp/intelliDocs/.env* 2>/dev/null | head -10)",
+      "Bash(ls data/ 2>/dev/null; ls drizzle.config.* 2>/dev/null; cat package.json | grep -E \"drizzle|migrate\" 2>/dev/null)",
+      "Bash(sqlite3 data/intellidocs.db \"ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;\" 2>&1 || echo \"Column may already exist\")"
     ]
   },
   "enabledPlugins": {
