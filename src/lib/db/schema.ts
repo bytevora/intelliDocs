@@ -63,6 +63,7 @@ export const visuals = sqliteTable("visuals", {
     enum: [
       "mindmap",
       "comparison", "funnel", "stats", "swot", "orgchart", "venn",
+      "flowchart", "timeline", "sequence", "pie",
       "bar", "line", "area", "donut", "radar", "scatter", "heatmap", "sankey",
     ],
   }).notNull(),
@@ -99,6 +100,7 @@ export const visualCache = sqliteTable("visual_cache", {
     enum: [
       "mindmap",
       "comparison", "funnel", "stats", "swot", "orgchart", "venn",
+      "flowchart", "timeline", "sequence", "pie",
       "bar", "line", "area", "donut", "radar", "scatter", "heatmap", "sankey",
     ],
   }).notNull(),

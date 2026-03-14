@@ -83,6 +83,6 @@ export const generateVisualSchema = z.object({
 export const updateVisualSchema = z.object({
   action: z.enum(["regenerate"]).optional(),
   visualType: z.enum(VISUAL_TYPES).optional(),
-  theme: z.string().optional(),
+  theme: z.enum(["default", "forest", "dark", "neutral", "ocean", "sunset", "monochrome"]).optional(),
   customData: z.string().optional(),
 });

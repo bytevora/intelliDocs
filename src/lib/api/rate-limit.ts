@@ -78,9 +78,9 @@ function getClientIp(req: NextRequest): string {
     if (realIp) return realIp;
   }
 
-  // In non-proxy setups, use the direct connection IP from Next.js
-  const ip = req.ip;
-  if (ip) return ip;
+  // In non-proxy setups, try x-forwarded-for as Next.js may still set it
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (forwarded) return forwarded;
 
   // Final fallback — use a per-request unique key so "unknown" clients
   // don't all share a single rate-limit bucket
