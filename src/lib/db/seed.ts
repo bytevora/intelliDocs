@@ -6,6 +6,9 @@ import { v4 as uuidv4 } from "uuid";
 import { randomBytes } from "crypto";
 import fs from "fs";
 import path from "path";
+import { logger } from "../logger";
+
+const log = logger.create("seed");
 
 export async function seedAdmin() {
   const existingAdmin = db
@@ -15,7 +18,7 @@ export async function seedAdmin() {
     .get();
 
   if (existingAdmin) {
-    console.log("Admin user already exists, skipping seed.");
+    log.info("Admin user already exists, skipping seed.");
     return;
   }
 
@@ -40,5 +43,5 @@ export async function seedAdmin() {
   const content = `Admin Credentials (auto-generated)\nUsername: admin\nEmail: admin@intellidocs.local\nPassword: ${password}\n`;
   fs.writeFileSync(credentialsPath, content, { mode: 0o600 });
 
-  console.log(`Admin user created. Credentials saved to ${credentialsPath}`);
+  log.info(`Admin user created. Credentials saved to ${credentialsPath}`);
 }

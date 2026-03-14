@@ -3,8 +3,9 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { requireAdmin, ApiError, handleApiError } from "@/lib/api/guards";
 import { hashPassword } from "@/lib/auth/passwords";
-import { PASSWORD_MIN_LENGTH } from "@/lib/auth/constants";
 import { eq } from "drizzle-orm";
+import { validate } from "@/lib/api/validate";
+import { updateUserSchema } from "@/lib/api/schemas";
 
 type Params = { params: Promise<{ userId: string }> };
 
@@ -17,15 +18,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const target = db.select().from(users).where(eq(users.id, userId)).get();
     if (!target) throw new ApiError(404, "User not found");
 
-    const body = await req.json();
+    const body = validate(updateUserSchema, await req.json());
     const updates: Record<string, unknown> = {};
 
     if (body.username !== undefined) updates.username = body.username;
     if (body.email !== undefined) updates.email = body.email;
     if (body.role !== undefined) {
-      if (body.role !== "admin" && body.role !== "user") {
-        return NextResponse.json({ error: "Invalid role" }, { status: 400 });
-      }
       // Prevent admin from demoting themselves
       if (target.id === admin.sub && body.role !== "admin") {
         return NextResponse.json(
@@ -44,21 +42,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           { status: 400 }
         );
       }
-      updates.isActive = Boolean(body.isActive);
+      updates.isActive = body.isActive;
     }
 
     if (body.password !== undefined) {
-      if (body.password.length < PASSWORD_MIN_LENGTH) {
-        return NextResponse.json(
-          { error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters` },
-          { status: 400 }
-        );
-      }
       updates.password = await hashPassword(body.password);
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
     updates.updatedAt = new Date().toISOString();

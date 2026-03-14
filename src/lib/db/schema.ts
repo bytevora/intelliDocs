@@ -61,15 +61,11 @@ export const visuals = sqliteTable("visuals", {
   sourceText: text("source_text").notNull(),
   visualType: text("visual_type", {
     enum: [
-      "flowchart", "mindmap", "timeline", "sequence", "pie",
+      "mindmap",
       "comparison", "funnel", "stats", "swot", "orgchart", "venn",
       "bar", "line", "area", "donut", "radar", "scatter", "heatmap", "sankey",
     ],
   }).notNull(),
-  renderMode: text("render_mode", {
-    enum: ["mermaid", "custom"],
-  }).notNull().default("mermaid"),
-  mermaidSyntax: text("mermaid_syntax").notNull().default(""),
   customData: text("custom_data"),
   theme: text("theme", {
     enum: ["default", "forest", "dark", "neutral", "ocean", "sunset", "monochrome"],
@@ -84,19 +80,28 @@ export const visuals = sqliteTable("visuals", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+export const refreshTokens = sqliteTable("refresh_tokens", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  jti: text("jti").notNull().unique(),
+  revoked: integer("revoked", { mode: "boolean" }).notNull().default(false),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 export const visualCache = sqliteTable("visual_cache", {
   contentHash: text("content_hash").primaryKey(),
   visualType: text("visual_type", {
     enum: [
-      "flowchart", "mindmap", "timeline", "sequence", "pie",
+      "mindmap",
       "comparison", "funnel", "stats", "swot", "orgchart", "venn",
       "bar", "line", "area", "donut", "radar", "scatter", "heatmap", "sankey",
     ],
   }).notNull(),
-  renderMode: text("render_mode", {
-    enum: ["mermaid", "custom"],
-  }).notNull(),
-  mermaidSyntax: text("mermaid_syntax").notNull().default(""),
   customData: text("custom_data"),
   hitCount: integer("hit_count").notNull().default(0),
   createdAt: text("created_at")

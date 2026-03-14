@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, use } from "react";
+import { Suspense, lazy, useEffect, useState, useCallback, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { useCollaboration } from "@/hooks/use-collaboration";
-import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { DocumentProvider } from "@/components/editor/document-context";
 import { EditorErrorBoundary } from "@/components/editor/editor-error-boundary";
 import { OnlineUsers } from "@/components/editor/online-users";
-import { ShareDialog } from "@/components/sharing/share-dialog";
-import { NewDocumentDialog } from "@/components/editor/new-document-dialog";
-import { VisualsSidebar } from "@/components/editor/visuals-sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { exportAsPdf } from "@/lib/export";
+
+const TiptapEditor = lazy(() => import("@/components/editor/tiptap-editor").then(m => ({ default: m.TiptapEditor })));
+const ShareDialog = lazy(() => import("@/components/sharing/share-dialog").then(m => ({ default: m.ShareDialog })));
+const NewDocumentDialog = lazy(() => import("@/components/editor/new-document-dialog").then(m => ({ default: m.NewDocumentDialog })));
+const VisualsSidebar = lazy(() => import("@/components/editor/visuals-sidebar").then(m => ({ default: m.VisualsSidebar })));
 
 interface DocumentData {
   id: string;
@@ -42,6 +44,8 @@ export default function DocumentEditorPage({
   const [categoriesPanelOpen, setCategoriesPanelOpen] = useState(false);
   const [newDocOpen, setNewDocOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const { debouncedSave, status } = useAutoSave(id, authFetch);
@@ -108,6 +112,35 @@ export default function DocumentEditorPage({
     },
     [isCollaborative, provider, debouncedSave]
   );
+
+  const handleDelete = useCallback(async () => {
+    setDeleting(true);
+    try {
+      const res = await authFetch(`/api/documents/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        // Navigate to the first remaining document, or dashboard if none left
+        const listRes = await authFetch("/api/documents");
+        if (listRes.ok) {
+          const docs = await listRes.json();
+          const list = Array.isArray(docs) ? docs : docs.documents ?? [];
+          if (list.length > 0) {
+            router.push(`/documents/${list[0].id}`);
+            return;
+          }
+        }
+        router.push("/dashboard");
+      } else {
+        const data = await res.json().catch(() => null);
+        alert(data?.error || "Failed to delete document");
+        setDeleting(false);
+        setDeleteConfirmOpen(false);
+      }
+    } catch {
+      alert("Failed to delete document");
+      setDeleting(false);
+      setDeleteConfirmOpen(false);
+    }
+  }, [id, authFetch, router]);
 
   const handleContentUpdate = useCallback(
     (json: object) => {
@@ -211,15 +244,28 @@ export default function DocumentEditorPage({
           )}
 
           {doc?.permission === "owner" && (
-            <button
-              onClick={() => setShareOpen(true)}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.375 21c-2.331 0-4.512-.645-6.375-1.765Z" />
-              </svg>
-              Share
-            </button>
+            <>
+              <button
+                onClick={() => setShareOpen(true)}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.375 21c-2.331 0-4.512-.645-6.375-1.765Z" />
+                </svg>
+                Share
+              </button>
+
+              <button
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 transition-colors"
+                title="Delete document"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+                Delete
+              </button>
+            </>
           )}
 
           {editable && (
@@ -261,12 +307,14 @@ export default function DocumentEditorPage({
       <main className="flex-1 flex overflow-hidden min-h-0">
         {/* Left: Visuals sidebar */}
         <div className="print:hidden">
-          <VisualsSidebar
-            documentId={id}
-            authFetch={authFetch}
-            collapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
+          <Suspense fallback={<div className="w-10 border-r border-border" />}>
+            <VisualsSidebar
+              documentId={id}
+              authFetch={authFetch}
+              collapsed={sidebarCollapsed}
+              onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
+          </Suspense>
         </div>
 
         {/* Right: Document editor */}
@@ -323,48 +371,58 @@ export default function DocumentEditorPage({
             <div className="pl-[calc(var(--margin-left)+1.5rem)] pr-8 sm:pr-12 pb-16 flex-1 flex flex-col relative z-[2]">
             {/* Editor */}
             <div className="flex-1 doc-editor-prose">
-              {collabReady && ydoc && provider ? (
-                <EditorErrorBoundary
-                  fallback={
-                    content ? (
-                      <DocumentProvider documentId={id} authFetch={authFetch}>
-                        <TiptapEditor
-                          content={content}
-                          onUpdate={handleContentUpdate}
-                          editable={editable}
-                          showCategoriesPanel={categoriesPanelOpen}
-                          onCloseCategoriesPanel={() => setCategoriesPanelOpen(false)}
-                        />
-                      </DocumentProvider>
-                    ) : null
-                  }
-                >
+              <Suspense fallback={
+                <div className="space-y-5 py-6 animate-pulse">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-32 w-full" />
+                </div>
+              }>
+                {collabReady && ydoc && provider ? (
+                  <EditorErrorBoundary
+                    fallback={
+                      content ? (
+                        <DocumentProvider documentId={id} authFetch={authFetch}>
+                          <TiptapEditor
+                            content={content}
+                            onUpdate={handleContentUpdate}
+                            editable={editable}
+                            showCategoriesPanel={categoriesPanelOpen}
+                            onCloseCategoriesPanel={() => setCategoriesPanelOpen(false)}
+                          />
+                        </DocumentProvider>
+                      ) : null
+                    }
+                  >
+                    <DocumentProvider documentId={id} authFetch={authFetch}>
+                      <TiptapEditor
+                        key={ydoc.clientID}
+                        ydoc={ydoc}
+                        provider={provider}
+                        editable={editable}
+                      />
+                    </DocumentProvider>
+                  </EditorErrorBoundary>
+                ) : collabPending ? (
+                  <div className="space-y-5 py-6 animate-pulse">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-4 bg-muted rounded w-1/2" />
+                    <div className="h-4 bg-muted rounded w-5/6" />
+                    <div className="h-4 bg-muted rounded w-2/3" />
+                    <p className="text-xs text-muted-foreground pt-4">Syncing...</p>
+                  </div>
+                ) : content ? (
                   <DocumentProvider documentId={id} authFetch={authFetch}>
                     <TiptapEditor
-                      key={ydoc.clientID}
-                      ydoc={ydoc}
-                      provider={provider}
+                      content={content}
+                      onUpdate={handleContentUpdate}
                       editable={editable}
                     />
                   </DocumentProvider>
-                </EditorErrorBoundary>
-              ) : collabPending ? (
-                <div className="space-y-5 py-6 animate-pulse">
-                  <div className="h-4 bg-muted rounded w-3/4" />
-                  <div className="h-4 bg-muted rounded w-1/2" />
-                  <div className="h-4 bg-muted rounded w-5/6" />
-                  <div className="h-4 bg-muted rounded w-2/3" />
-                  <p className="text-xs text-muted-foreground pt-4">Syncing...</p>
-                </div>
-              ) : content ? (
-                <DocumentProvider documentId={id} authFetch={authFetch}>
-                  <TiptapEditor
-                    content={content}
-                    onUpdate={handleContentUpdate}
-                    editable={editable}
-                  />
-                </DocumentProvider>
-              ) : null}
+                ) : null}
+              </Suspense>
             </div>
           </div>
           </div>
@@ -374,15 +432,60 @@ export default function DocumentEditorPage({
       </main>
 
       {doc?.permission === "owner" && (
-        <ShareDialog
-          open={shareOpen}
-          onOpenChange={setShareOpen}
-          documentId={id}
-          authFetch={authFetch}
-        />
+        <Suspense fallback={null}>
+          <ShareDialog
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            documentId={id}
+            authFetch={authFetch}
+          />
+        </Suspense>
       )}
 
-      <NewDocumentDialog open={newDocOpen} onOpenChange={setNewDocOpen} />
+      <Suspense fallback={null}>
+        <NewDocumentDialog open={newDocOpen} onOpenChange={setNewDocOpen} />
+      </Suspense>
+
+      {/* Delete confirmation dialog */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !deleting && setDeleteConfirmOpen(false)}
+          />
+          <div className="relative bg-card border border-border rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Delete document</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This will permanently delete &quot;{title || "Untitled Document"}&quot; along with all its visuals and shared access. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setDeleteConfirmOpen(false)}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-foreground bg-secondary hover:bg-secondary/80 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

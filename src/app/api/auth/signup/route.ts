@@ -2,28 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { hashPassword } from "@/lib/auth/passwords";
-import { PASSWORD_MIN_LENGTH } from "@/lib/auth/constants";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { handleApiError } from "@/lib/api/guards";
+import { rateLimit, AUTH_SIGNUP_LIMIT } from "@/lib/api/rate-limit";
+import { validate } from "@/lib/api/validate";
+import { signupSchema } from "@/lib/api/schemas";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { username, email, password } = body;
-
-    if (!username || !email || !password) {
-      return NextResponse.json(
-        { error: "Username, email, and password are required" },
-        { status: 400 }
-      );
-    }
-
-    if (password.length < PASSWORD_MIN_LENGTH) {
-      return NextResponse.json(
-        { error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters` },
-        { status: 400 }
-      );
-    }
+    rateLimit(req, AUTH_SIGNUP_LIMIT, "auth:signup");
+    const { username, email, password } = validate(signupSchema, await req.json());
 
     const existingEmail = db
       .select()
@@ -76,10 +65,8 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err) {
+    try { return handleApiError(err); } catch {}
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

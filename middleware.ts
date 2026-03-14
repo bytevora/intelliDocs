@@ -9,11 +9,36 @@ const publicPaths = [
   "/api/auth/refresh",
 ];
 
+function generateCspHeaders(nonce: string) {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    `style-src 'self' 'nonce-${nonce}'`,
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' ws: wss:",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Generate CSP nonce
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+
+  // Set nonce in request header so the layout can read it
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-nonce", nonce);
+
+  const csp = generateCspHeaders(nonce);
+
   if (publicPaths.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+    response.headers.set("Content-Security-Policy", csp);
+    return response;
   }
 
   // API routes: verify Bearer token
@@ -27,7 +52,11 @@ export async function middleware(req: NextRequest) {
     try {
       const secret = new TextEncoder().encode(process.env.JWT_SECRET);
       await jwtVerify(token, secret);
-      return NextResponse.next();
+      const response = NextResponse.next({
+        request: { headers: requestHeaders },
+      });
+      response.headers.set("Content-Security-Policy", csp);
+      return response;
     } catch {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -41,7 +70,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set("Content-Security-Policy", csp);
+  return response;
 }
 
 export const config = {

@@ -2,14 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { documents, documentShares, users } from "@/lib/db/schema";
 import { requireAuth, handleApiError } from "@/lib/api/guards";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { parsePagination, paginationMeta } from "@/lib/api/pagination";
+import { createDocumentSchema } from "@/lib/api/schemas";
 
 export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth(req);
+    const { page, limit, offset } = parsePagination(req.nextUrl.searchParams);
 
-    // Own documents
+    // Own documents (paginated)
+    const ownTotal = db
+      .select({ count: count() })
+      .from(documents)
+      .where(eq(documents.ownerId, user.sub))
+      .get()!.count;
+
     const ownDocs = db
       .select({
         id: documents.id,
@@ -20,10 +29,18 @@ export async function GET(req: NextRequest) {
       .from(documents)
       .where(eq(documents.ownerId, user.sub))
       .orderBy(desc(documents.updatedAt))
+      .limit(limit)
+      .offset(offset)
       .all()
       .map((d) => ({ ...d, isShared: false as const }));
 
-    // Shared with me
+    // Shared with me (paginated)
+    const sharedTotal = db
+      .select({ count: count() })
+      .from(documentShares)
+      .where(eq(documentShares.sharedWith, user.sub))
+      .get()!.count;
+
     const sharedDocs = db
       .select({
         id: documents.id,
@@ -38,10 +55,19 @@ export async function GET(req: NextRequest) {
       .innerJoin(users, eq(documents.ownerId, users.id))
       .where(eq(documentShares.sharedWith, user.sub))
       .orderBy(desc(documents.updatedAt))
+      .limit(limit)
+      .offset(offset)
       .all()
       .map((d) => ({ ...d, isShared: true as const }));
 
-    return NextResponse.json({ own: ownDocs, shared: sharedDocs });
+    return NextResponse.json({
+      own: ownDocs,
+      shared: sharedDocs,
+      pagination: {
+        own: paginationMeta(page, limit, ownTotal),
+        shared: paginationMeta(page, limit, sharedTotal),
+      },
+    });
   } catch (err) {
     return handleApiError(err);
   }
@@ -53,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     let title = "Untitled";
     try {
-      const body = await req.json();
+      const body = createDocumentSchema.parse(await req.json());
       if (body.title) title = body.title;
     } catch {
       // empty body is fine, use defaults

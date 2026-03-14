@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { documents } from "@/lib/db/schema";
+import { documents, visuals, documentShares } from "@/lib/db/schema";
 import {
   requireAuth,
   requireDocumentAccess,
@@ -8,6 +8,8 @@ import {
   handleApiError,
 } from "@/lib/api/guards";
 import { eq } from "drizzle-orm";
+import { validate } from "@/lib/api/validate";
+import { updateDocumentSchema } from "@/lib/api/schemas";
 
 export async function GET(
   req: NextRequest,
@@ -33,7 +35,7 @@ export async function PUT(
     const { id } = await params;
     requireDocumentAccess(id, user.sub, "editor");
 
-    const body = await req.json();
+    const body = validate(updateDocumentSchema, await req.json());
     const updates: Record<string, string> = {
       updatedAt: new Date().toISOString(),
     };
@@ -64,6 +66,9 @@ export async function DELETE(
     const { id } = await params;
     requireDocumentOwner(id, user.sub);
 
+    // Explicitly delete related records before the document
+    db.delete(visuals).where(eq(visuals.documentId, id)).run();
+    db.delete(documentShares).where(eq(documentShares.documentId, id)).run();
     db.delete(documents).where(eq(documents.id, id)).run();
 
     return NextResponse.json({ success: true });

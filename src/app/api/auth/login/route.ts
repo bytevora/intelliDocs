@@ -5,18 +5,15 @@ import { verifyPassword } from "@/lib/auth/passwords";
 import { signAccessToken, signRefreshToken } from "@/lib/auth/jwt";
 import { REFRESH_TOKEN_MAX_AGE } from "@/lib/auth/constants";
 import { eq } from "drizzle-orm";
+import { handleApiError } from "@/lib/api/guards";
+import { rateLimit, AUTH_LOGIN_LIMIT } from "@/lib/api/rate-limit";
+import { validate } from "@/lib/api/validate";
+import { loginSchema } from "@/lib/api/schemas";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { email, password } = body;
-
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 }
-      );
-    }
+    rateLimit(req, AUTH_LOGIN_LIMIT, "auth:login");
+    const { email, password } = validate(loginSchema, await req.json());
 
     const user = db
       .select()
@@ -75,10 +72,8 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err) {
+    try { return handleApiError(err); } catch {}
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

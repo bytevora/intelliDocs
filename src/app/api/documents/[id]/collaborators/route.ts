@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { documentShares, users } from "@/lib/db/schema";
 import { requireAuth, requireDocumentAccess, handleApiError } from "@/lib/api/guards";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export async function GET(
   req: NextRequest,
@@ -25,7 +25,12 @@ export async function GET(
       })
       .from(documentShares)
       .innerJoin(users, eq(documentShares.sharedWith, users.id))
-      .where(eq(documentShares.documentId, documentId))
+      .where(
+        and(
+          eq(documentShares.documentId, documentId),
+          eq(users.isActive, true)
+        )
+      )
       .all();
 
     return NextResponse.json(shares);

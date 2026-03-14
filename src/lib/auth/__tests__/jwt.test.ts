@@ -1,9 +1,25 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
 
 // Set env vars before importing jwt module
 beforeAll(() => {
   process.env.JWT_SECRET = "test-secret-key-for-vitest-at-least-32-chars";
   process.env.JWT_REFRESH_SECRET = "test-refresh-secret-for-vitest-at-least-32";
+});
+
+// Mock db for refresh token storage
+vi.mock("@/lib/db", () => {
+  const chain: Record<string, unknown> = {};
+  chain.from = () => chain;
+  chain.where = () => chain;
+  chain.get = vi.fn().mockReturnValue({ jti: "test", revoked: false });
+  chain.run = vi.fn();
+  return {
+    db: {
+      select: () => chain,
+      insert: () => ({ values: () => ({ run: vi.fn() }) }),
+      update: () => ({ set: () => ({ where: () => ({ run: vi.fn() }) }) }),
+    },
+  };
 });
 
 describe("jwt", () => {

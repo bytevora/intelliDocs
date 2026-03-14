@@ -15,6 +15,20 @@
       "when": 1773428352118,
       "tag": "0001_unique_adam_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1773511233834,
+      "tag": "0002_redundant_pet_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1773512914022,
+      "tag": "0003_tranquil_mastermind",
+      "breakpoints": true
     }
   ]
 }

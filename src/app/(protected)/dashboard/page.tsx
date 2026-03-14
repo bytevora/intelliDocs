@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -55,31 +55,59 @@ export default function DashboardPage() {
   const [sharedDocs, setSharedDocs] = useState<DocumentListItem[]>([]);
   const [activeTab, setActiveTab] = useState<"own" | "shared">("own");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DocumentListItem | null>(
     null
   );
   const [deleting, setDeleting] = useState(false);
   const [newDocOpen, setNewDocOpen] = useState(false);
+  const ownPage = useRef(1);
+  const sharedPage = useRef(1);
+  const [hasMoreOwn, setHasMoreOwn] = useState(false);
+  const [hasMoreShared, setHasMoreShared] = useState(false);
+  const [ownTotal, setOwnTotal] = useState(0);
+  const [sharedTotal, setSharedTotal] = useState(0);
 
-  const fetchDocuments = useCallback(async () => {
+  const fetchDocuments = useCallback(async (page = 1, append = false) => {
     try {
-      const res = await authFetch("/api/documents");
+      const res = await authFetch(`/api/documents?page=${page}&limit=20`);
       if (res.ok) {
         const data = await res.json();
-        setOwnDocs(data.own);
-        setSharedDocs(data.shared);
+        if (append) {
+          setOwnDocs((prev) => [...prev, ...data.own]);
+          setSharedDocs((prev) => [...prev, ...data.shared]);
+        } else {
+          setOwnDocs(data.own);
+          setSharedDocs(data.shared);
+        }
+        setOwnTotal(data.pagination.own.total);
+        setSharedTotal(data.pagination.shared.total);
+        setHasMoreOwn(page < data.pagination.own.totalPages);
+        setHasMoreShared(page < data.pagination.shared.totalPages);
       }
     } catch {
       toast.error("Failed to load documents");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [authFetch]);
 
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  function loadMore() {
+    setLoadingMore(true);
+    if (activeTab === "own") {
+      ownPage.current += 1;
+      fetchDocuments(ownPage.current, true);
+    } else {
+      sharedPage.current += 1;
+      fetchDocuments(sharedPage.current, true);
+    }
+  }
 
   function handleCreateDocument() {
     setNewDocOpen(true);
@@ -215,7 +243,7 @@ export default function DashboardPage() {
                     My Workspace
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-md font-mono ${activeTab === 'own' ? 'bg-primary/20' : 'bg-muted'}`}>
-                    {loading ? "..." : ownDocs.length}
+                    {loading ? "..." : ownTotal}
                   </span>
                 </button>
                 <button
@@ -231,7 +259,7 @@ export default function DashboardPage() {
                     Shared with me
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-md font-mono ${activeTab === 'shared' ? 'bg-primary/20' : 'bg-muted'}`}>
-                    {loading ? "..." : sharedDocs.length}
+                    {loading ? "..." : sharedTotal}
                   </span>
                 </button>
                 {user?.role === "admin" && (
@@ -328,6 +356,7 @@ export default function DashboardPage() {
                 )}
               </div>
             ) : (
+              <div className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {activeDocs.map((doc) => (
                   <div
@@ -395,6 +424,19 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+              {((activeTab === "own" && hasMoreOwn) || (activeTab === "shared" && hasMoreShared)) && (
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    className="rounded-xl font-semibold px-8"
+                  >
+                    {loadingMore ? "Loading..." : "Load More"}
+                  </Button>
+                </div>
+              )}
               </div>
             )}
           </div>

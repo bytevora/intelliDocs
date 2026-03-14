@@ -5,6 +5,8 @@ import { requireAuth, requireDocumentAccess, ApiError, handleApiError } from "@/
 import { generateVisual } from "@/lib/ai/gemini";
 import { eq } from "drizzle-orm";
 import { VisualTheme, VisualType, ALL_VISUAL_TYPES } from "@/types";
+import { validate } from "@/lib/api/validate";
+import { updateVisualSchema } from "@/lib/api/schemas";
 
 const VALID_THEMES: VisualTheme[] = [
   "default", "forest", "dark", "neutral", "ocean", "sunset", "monochrome",
@@ -50,21 +52,15 @@ export async function PUT(
     requireDocumentAccess(documentId, user.sub, "editor");
     const visual = requireVisual(visualId, documentId);
 
-    const body = await req.json();
+    const body = validate(updateVisualSchema, await req.json());
 
     // Regenerate visual (optionally with a new type for layout swap)
     if (body.action === "regenerate") {
-      const requestedType = body.visualType as VisualType | undefined;
-      if (requestedType && !(ALL_VISUAL_TYPES as string[]).includes(requestedType)) {
-        throw new ApiError(400, "Invalid visual type");
-      }
-      const result = await generateVisual(visual.sourceText, requestedType);
+      const result = await generateVisual(visual.sourceText, body.visualType);
       db.update(visuals)
         .set({
-          mermaidSyntax: result.mermaidSyntax,
           customData: result.customData,
           visualType: result.visualType,
-          renderMode: result.renderMode,
           updatedAt: new Date().toISOString(),
         })
         .where(eq(visuals.id, visualId))
@@ -81,10 +77,6 @@ export async function PUT(
 
     // Update theme
     if (body.theme) {
-      if (!VALID_THEMES.includes(body.theme)) {
-        throw new ApiError(400, "Invalid theme");
-      }
-
       db.update(visuals)
         .set({
           theme: body.theme,

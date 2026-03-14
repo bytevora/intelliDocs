@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { verifyRefreshToken, signAccessToken, signRefreshToken } from "@/lib/auth/jwt";
+import { verifyRefreshToken, signAccessToken, signRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "@/lib/auth/jwt";
 import { eq } from "drizzle-orm";
+import { handleApiError } from "@/lib/api/guards";
+import { rateLimit, AUTH_REFRESH_LIMIT } from "@/lib/api/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
+    rateLimit(req, AUTH_REFRESH_LIMIT, "auth:refresh");
     const refreshTokenCookie = req.cookies.get("refresh_token")?.value;
 
     if (!refreshTokenCookie) {
@@ -15,7 +18,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let payload: { sub: string };
+    let payload: { sub: string; jti: string };
     try {
       payload = await verifyRefreshToken(refreshTokenCookie);
     } catch {
@@ -39,6 +42,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (!user.isActive) {
+      // Revoke ALL refresh tokens for this user so replayed cookies are rejected
+      revokeAllUserRefreshTokens(user.id);
       const response = NextResponse.json(
         { error: "Account deactivated" },
         { status: 403 }
@@ -46,6 +51,9 @@ export async function POST(req: NextRequest) {
       response.cookies.delete("refresh_token");
       return response;
     }
+
+    // Revoke the old refresh token (token rotation)
+    revokeRefreshToken(payload.jti);
 
     const accessToken = await signAccessToken({
       sub: user.id,
@@ -67,10 +75,8 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err) {
+    try { return handleApiError(err); } catch {}
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

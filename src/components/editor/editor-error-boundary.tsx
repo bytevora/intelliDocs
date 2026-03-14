@@ -1,6 +1,9 @@
 "use client";
 
 import { Component, ReactNode } from "react";
+import { logger } from "@/lib/logger";
+
+const log = logger.create("editor");
 
 interface Props {
   children: ReactNode;
@@ -22,7 +25,7 @@ export class EditorErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error) {
-    console.warn("Editor error boundary caught:", error.message);
+    log.warn("Error boundary caught", error.message);
   }
 
   render() {

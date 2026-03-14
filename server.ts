@@ -10,6 +10,9 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import { encoding, decoding } from "lib0";
 import { yXmlFragmentToProsemirrorJSON } from "y-prosemirror";
 import { eq, and } from "drizzle-orm";
+import { logger } from "./src/lib/logger";
+
+const log = logger.create("server");
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
@@ -23,6 +26,7 @@ interface DocRoom {
   awareness: awarenessProtocol.Awareness;
   clients: Map<string, { socketId: string; userId: string; permission: string }>;
   saveTimeout: ReturnType<typeof setTimeout> | null;
+  dirty: boolean;
 }
 
 const rooms = new Map<string, DocRoom>();
@@ -46,13 +50,13 @@ function getOrCreateRoom(documentId: string, yjsState: string | null): DocRoom {
       const binaryState = Buffer.from(yjsState, "base64");
       Y.applyUpdate(ydoc, new Uint8Array(binaryState));
     } catch (e) {
-      console.error(`Failed to load Yjs state for doc ${documentId}:`, e);
+      log.error(`Failed to load Yjs state for doc ${documentId}`, e);
     }
   }
 
   const awareness = new awarenessProtocol.Awareness(ydoc);
 
-  room = { ydoc, awareness, clients: new Map(), saveTimeout: null };
+  room = { ydoc, awareness, clients: new Map(), saveTimeout: null, dirty: false };
   rooms.set(documentId, room);
   return room;
 }
@@ -87,8 +91,10 @@ async function persistDoc(documentId: string, room: DocRoom) {
       .update(documents)
       .set(updateData)
       .where(eq(documents.id, documentId));
+
+    room.dirty = false;
   } catch (e) {
-    console.error(`Failed to persist doc ${documentId}:`, e);
+    log.error(`Failed to persist doc ${documentId}`, e);
   }
 }
 
@@ -98,7 +104,7 @@ function cleanupRoom(documentId: string) {
   if (room.clients.size > 0) return;
 
   if (room.saveTimeout) clearTimeout(room.saveTimeout);
-  persistDoc(documentId, room);
+  if (room.dirty) persistDoc(documentId, room);
 
   room.awareness.destroy();
   room.ydoc.destroy();
@@ -139,13 +145,6 @@ app.prepare().then(async () => {
   const schemaModule = await import("./src/lib/db/schema");
   documents = schemaModule.documents;
   documentShares = schemaModule.documentShares;
-
-  // Run migrations
-  const { migrate } = await import("drizzle-orm/better-sqlite3/migrator");
-  migrate(db, { migrationsFolder: "./drizzle" });
-
-  const { seedAdmin } = await import("./src/lib/db/seed");
-  await seedAdmin();
 
   const httpServer = createServer((req, res) => {
     handle(req, res);
@@ -254,6 +253,7 @@ app.prepare().then(async () => {
       syncProtocol.readSyncMessage(decoder, responseEncoder, room.ydoc, null);
 
       socket.to(documentId).emit("sync-update", data);
+      room.dirty = true;
       scheduleSave(documentId, room);
     });
 
@@ -281,7 +281,7 @@ app.prepare().then(async () => {
             .set({ title: newTitle, updatedAt: new Date().toISOString() })
             .where(eq(documents.id, documentId));
         } catch (e) {
-          console.error("Failed to persist title:", e);
+          log.error("Failed to persist title", e);
         }
       }
     });
@@ -311,6 +311,6 @@ app.prepare().then(async () => {
   });
 
   httpServer.listen(port, () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
+    log.info(`Ready on http://${hostname}:${port}`);
   });
 });

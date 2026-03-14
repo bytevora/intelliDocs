@@ -11,6 +11,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public headers?: Record<string, string>,
   ) {
     super(message);
   }
@@ -110,7 +111,13 @@ export function requireDocumentAccess(
 /** Convert an ApiError into a NextResponse. Re-throws unknown errors. */
 export function handleApiError(err: unknown): NextResponse {
   if (err instanceof ApiError) {
-    return NextResponse.json({ error: err.message }, { status: err.status });
+    const res = NextResponse.json({ error: err.message }, { status: err.status });
+    if (err.headers) {
+      for (const [key, value] of Object.entries(err.headers)) {
+        res.headers.set(key, value);
+      }
+    }
+    return res;
   }
   throw err;
 }

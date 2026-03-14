@@ -35,18 +35,6 @@ const PATTERNS: { type: VisualType; keywords: RegExp; label: string; icon: strin
     icon: "grid",
   },
   {
-    type: "timeline",
-    keywords: /\b(timeline|milestone|history|chronolog|year|month|date|phase|q[1-4]|sprint|roadmap)\b/i,
-    label: "Timeline",
-    icon: "clock",
-  },
-  {
-    type: "flowchart",
-    keywords: /\b(step|process|workflow|if.*then|decision|start.*end|procedure|algorithm|first.*then.*finally)\b/i,
-    label: "Flowchart",
-    icon: "git-branch",
-  },
-  {
     type: "orgchart",
     keywords: /\b(team|report|manager|ceo|cto|hierarchy|organization|department|director|head of)\b/i,
     label: "Org Chart",
@@ -59,9 +47,9 @@ const PATTERNS: { type: VisualType; keywords: RegExp; label: string; icon: strin
     icon: "circle",
   },
   {
-    type: "pie",
+    type: "donut",
     keywords: /\b(percent|proportion|distribution|share|breakdown|allocation|split|ratio|portion)\b/i,
-    label: "Pie Chart",
+    label: "Donut Chart",
     icon: "pie-chart",
   },
   {
@@ -75,12 +63,6 @@ const PATTERNS: { type: VisualType; keywords: RegExp; label: string; icon: strin
     keywords: /\b(trend|growth|over\s+time|monthly|weekly|daily|yearly|quarter|forecast|projection)\b/i,
     label: "Line Chart",
     icon: "trending-up",
-  },
-  {
-    type: "donut",
-    keywords: /\b(donut|doughnut|pie\s+chart|circular|ring\s+chart|segment)\b/i,
-    label: "Donut Chart",
-    icon: "circle",
   },
   {
     type: "radar",
@@ -189,7 +171,10 @@ export function VisualSuggestions({ editor }: VisualSuggestionsProps) {
         }),
       });
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.error(`Failed to generate visual (${res.status}): ${res.statusText}`);
+        return;
+      }
 
       const visual = await res.json();
 

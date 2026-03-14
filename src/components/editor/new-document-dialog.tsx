@@ -79,7 +79,10 @@ export function NewDocumentDialog({
     setGenerating(true);
     try {
       const res = await authFetch("/api/documents", { method: "POST" });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to create document (${res.status})`);
+      }
       const doc = await res.json();
       onOpenChange(false);
       router.push(`/documents/${doc.id}`);

@@ -6,7 +6,9 @@ import { generateVisual, generateMindmapForTemplate } from "@/lib/ai/gemini";
 import { HORIZONTAL_MINDMAP_TEMPLATES, VERTICAL_MINDMAP_TEMPLATES, LEFT_MINDMAP_TEMPLATES, RIGHT_MINDMAP_TEMPLATES } from "@/components/visuals/mindmap-templates";
 import { eq, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { VisualType, ALL_VISUAL_TYPES } from "@/types";
+import { VisualType } from "@/types";
+import { validate } from "@/lib/api/validate";
+import { generateVisualSchema } from "@/lib/api/schemas";
 
 async function computeHash(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);
@@ -26,22 +28,10 @@ export async function POST(
 
     requireDocumentAccess(documentId, user.sub, "editor");
 
-    const body = await req.json();
-    const { sourceText, visualType, templateId, forceRefresh } = body;
-
-    if (!sourceText || typeof sourceText !== "string") {
-      return NextResponse.json(
-        { error: "sourceText is required" },
-        { status: 400 }
-      );
-    }
-
-    if (visualType && !(ALL_VISUAL_TYPES as string[]).includes(visualType)) {
-      return NextResponse.json(
-        { error: "Invalid visual type" },
-        { status: 400 }
-      );
-    }
+    const { sourceText, visualType, templateId, forceRefresh } = validate(
+      generateVisualSchema,
+      await req.json()
+    );
 
     // Build cache key from normalized text + type + template
     const normalizedText = sourceText.trim().replace(/\s+/g, " ").toLowerCase();
@@ -59,8 +49,6 @@ export async function POST(
 
     let result: {
       visualType: string;
-      renderMode: string;
-      mermaidSyntax: string;
       customData: string | null;
     };
 
@@ -73,8 +61,6 @@ export async function POST(
 
       result = {
         visualType: cached.visualType,
-        renderMode: cached.renderMode,
-        mermaidSyntax: cached.mermaidSyntax,
         customData: cached.customData,
       };
     } else {
@@ -104,8 +90,6 @@ export async function POST(
 
       result = {
         visualType: aiResult.visualType,
-        renderMode: aiResult.renderMode,
-        mermaidSyntax: aiResult.mermaidSyntax,
         customData: aiResult.customData,
       };
 
@@ -120,8 +104,6 @@ export async function POST(
           db.update(visualCache)
             .set({
               visualType: result.visualType as typeof visualCache.$inferInsert.visualType,
-              renderMode: result.renderMode as typeof visualCache.$inferInsert.renderMode,
-              mermaidSyntax: result.mermaidSyntax,
               customData: result.customData,
               hitCount: 0,
             })
@@ -132,8 +114,6 @@ export async function POST(
             .values({
               contentHash,
               visualType: result.visualType as typeof visualCache.$inferInsert.visualType,
-              renderMode: result.renderMode as typeof visualCache.$inferInsert.renderMode,
-              mermaidSyntax: result.mermaidSyntax,
               customData: result.customData,
               hitCount: 0,
             })
@@ -144,8 +124,6 @@ export async function POST(
           .values({
             contentHash,
             visualType: result.visualType as typeof visualCache.$inferInsert.visualType,
-            renderMode: result.renderMode as typeof visualCache.$inferInsert.renderMode,
-            mermaidSyntax: result.mermaidSyntax,
             customData: result.customData,
             hitCount: 0,
           })
@@ -160,8 +138,6 @@ export async function POST(
       documentId,
       sourceText,
       visualType: result.visualType as typeof visuals.$inferInsert.visualType,
-      renderMode: result.renderMode as typeof visuals.$inferInsert.renderMode,
-      mermaidSyntax: result.mermaidSyntax,
       customData: result.customData,
       theme: "default" as const,
       createdAt: now,

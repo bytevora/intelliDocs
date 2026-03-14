@@ -4,9 +4,8 @@ import { documentShares, users } from "@/lib/db/schema";
 import { requireAuth, requireDocumentOwner, ApiError, handleApiError } from "@/lib/api/guards";
 import { eq, and, or } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { SharePermission } from "@/types";
-
-const VALID_PERMISSIONS: SharePermission[] = ["viewer", "editor"];
+import { validate } from "@/lib/api/validate";
+import { shareDocumentSchema } from "@/lib/api/schemas";
 
 export async function POST(
   req: NextRequest,
@@ -19,16 +18,7 @@ export async function POST(
     // Only owner can share
     requireDocumentOwner(documentId, user.sub);
 
-    const body = await req.json();
-    const { identifier, permission = "viewer" } = body;
-
-    if (!identifier || typeof identifier !== "string") {
-      throw new ApiError(400, "identifier (username or email) is required");
-    }
-
-    if (!VALID_PERMISSIONS.includes(permission)) {
-      throw new ApiError(400, "Permission must be 'viewer' or 'editor'");
-    }
+    const { identifier, permission } = validate(shareDocumentSchema, await req.json());
 
     // Find target user by email or username
     const targetUser = db

@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { documents } from "@/lib/db/schema";
 import { requireAuth, handleApiError } from "@/lib/api/guards";
 import { v4 as uuidv4 } from "uuid";
+import { validate } from "@/lib/api/validate";
+import { generateDocumentSchema } from "@/lib/api/schemas";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -43,7 +45,8 @@ Structure rules:
 6. Generate 3-7 sections depending on topic complexity
 7. Content should be detailed, informative, and professionally written
 8. Total document length: 800-2000 words
-9. IMPORTANT: Add 3-4 empty paragraphs ({"type": "paragraph"}) as spacing between the text content and any subsequent sections. Specifically, after the introductory blockquote add 3 empty paragraphs before the first heading, and after each section's content (bullet list or paragraph) add 3 empty paragraphs before the next horizontalRule or heading. This ensures comfortable visual breathing room in the rendered document.
+9. CRITICAL: All string values must be valid JSON strings. Escape any special characters (newlines as \\n, tabs as \\t, quotes as \\"). Never use raw line breaks inside string values.
+10. IMPORTANT: Add 3-4 empty paragraphs ({"type": "paragraph"}) as spacing between the text content and any subsequent sections. Specifically, after the introductory blockquote add 3 empty paragraphs before the first heading, and after each section's content (bullet list or paragraph) add 3 empty paragraphs before the next horizontalRule or heading. This ensures comfortable visual breathing room in the rendered document.
 
 Example structure for a listItem with bold label:
 {
@@ -68,19 +71,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth(req);
 
-    let idea: string;
-    try {
-      const body = await req.json();
-      idea = body.idea?.trim();
-      if (!idea) {
-        return NextResponse.json(
-          { error: "Please provide an idea for the document" },
-          { status: 400 }
-        );
-      }
-    } catch {
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-    }
+    const { idea } = validate(generateDocumentSchema, await req.json());
 
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
@@ -103,18 +94,63 @@ export async function POST(req: NextRequest) {
 
     let parsed: { title: string; icon: string; content: object };
 
+    // Sanitize JSON string to fix common LLM output issues
+    function sanitizeJson(str: string): string {
+      let s = str;
+      // Remove trailing commas before ] or }
+      s = s.replace(/,\s*([\]}])/g, "$1");
+      // Fix unescaped newlines inside JSON string values
+      // Walk through the string and escape raw control characters inside quotes
+      let result = "";
+      let inString = false;
+      let escaped = false;
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (escaped) {
+          result += ch;
+          escaped = false;
+          continue;
+        }
+        if (ch === "\\" && inString) {
+          result += ch;
+          escaped = true;
+          continue;
+        }
+        if (ch === '"') {
+          inString = !inString;
+          result += ch;
+          continue;
+        }
+        if (inString) {
+          if (ch === "\n") { result += "\\n"; continue; }
+          if (ch === "\r") { result += "\\r"; continue; }
+          if (ch === "\t") { result += "\\t"; continue; }
+        }
+        result += ch;
+      }
+      return result;
+    }
+
+    function tryParse(str: string): { title: string; icon: string; content: object } {
+      try {
+        return JSON.parse(str);
+      } catch {
+        return JSON.parse(sanitizeJson(str));
+      }
+    }
+
     // Try direct parse
     try {
-      parsed = JSON.parse(raw);
+      parsed = tryParse(raw);
     } catch {
       // Try extracting from markdown fences
       const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (fenceMatch) {
-        parsed = JSON.parse(fenceMatch[1].trim());
+        parsed = tryParse(fenceMatch[1].trim());
       } else {
         const braceMatch = raw.match(/(\{[\s\S]*\})/);
         if (braceMatch) {
-          parsed = JSON.parse(braceMatch[1]);
+          parsed = tryParse(braceMatch[1]);
         } else {
           throw new Error("Could not parse Gemini response");
         }

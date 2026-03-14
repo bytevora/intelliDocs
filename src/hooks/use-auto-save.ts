@@ -33,7 +33,7 @@ export function useAutoSave(
           body: JSON.stringify(body),
         });
 
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error(`Auto-save failed (${res.status}): ${res.statusText}`);
         setStatus("saved");
       } catch {
         setStatus("error");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,11 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState("");
+  const pageRef = useRef(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalUsers, setTotalUsers] = useState(0);
 
   // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -63,11 +67,18 @@ export default function AdminUsersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (page = 1, append = false) => {
     try {
-      const res = await authFetch("/api/admin/users");
+      const res = await authFetch(`/api/admin/users?page=${page}&limit=20`);
       if (res.ok) {
-        setUsers(await res.json());
+        const json = await res.json();
+        if (append) {
+          setUsers((prev) => [...prev, ...json.data]);
+        } else {
+          setUsers(json.data);
+        }
+        setTotalUsers(json.pagination.total);
+        setHasMore(page < json.pagination.totalPages);
       } else if (res.status === 403) {
         router.replace("/dashboard");
         toast.error("Admin access required");
@@ -76,6 +87,7 @@ export default function AdminUsersPage() {
       toast.error("Failed to load users");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [authFetch, router]);
 
@@ -86,6 +98,12 @@ export default function AdminUsersPage() {
     }
     fetchUsers();
   }, [user, router, fetchUsers]);
+
+  function loadMoreUsers() {
+    setLoadingMore(true);
+    pageRef.current += 1;
+    fetchUsers(pageRef.current, true);
+  }
 
   async function handleCreate() {
     setCreating(true);
@@ -251,7 +269,7 @@ export default function AdminUsersPage() {
           <div className="flex items-center gap-4 text-sm text-muted-foreground font-medium">
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4" />
-              <span>{users.length} total</span>
+              <span>{totalUsers} total</span>
             </div>
             <div className="flex items-center gap-1.5">
               <UserCheck className="h-3.5 w-3.5 text-emerald-500" />
@@ -399,6 +417,18 @@ export default function AdminUsersPage() {
                 )}
               </div>
             ))}
+            {hasMore && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  onClick={loadMoreUsers}
+                  disabled={loadingMore}
+                  className="rounded-xl font-semibold px-8"
+                >
+                  {loadingMore ? "Loading..." : "Load More"}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </main>

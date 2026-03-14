@@ -26,28 +26,22 @@ export interface Document {
   updatedAt: string;
 }
 
-// Mermaid-rendered types
-export type MermaidVisualType = "flowchart" | "timeline" | "sequence" | "pie";
 // Custom SVG-rendered types
 export type CustomVisualType = "mindmap" | "comparison" | "funnel" | "stats" | "swot" | "orgchart" | "venn";
 // Data chart types (rendered via Nivo)
 export type DataChartType = "bar" | "line" | "area" | "donut" | "radar" | "scatter" | "heatmap" | "sankey";
-export type VisualType = MermaidVisualType | CustomVisualType | DataChartType;
-export type RenderMode = "mermaid" | "custom";
+export type VisualType = CustomVisualType | DataChartType;
 export type VisualTheme = "default" | "forest" | "dark" | "neutral" | "ocean" | "sunset" | "monochrome";
 
-export const MERMAID_TYPES: MermaidVisualType[] = ["flowchart", "timeline", "sequence", "pie"];
 export const CUSTOM_TYPES: CustomVisualType[] = ["mindmap", "comparison", "funnel", "stats", "swot", "orgchart", "venn"];
 export const DATA_CHART_TYPES: DataChartType[] = ["bar", "line", "area", "donut", "radar", "scatter", "heatmap", "sankey"];
-export const ALL_VISUAL_TYPES: VisualType[] = [...MERMAID_TYPES, ...CUSTOM_TYPES, ...DATA_CHART_TYPES];
+export const ALL_VISUAL_TYPES: VisualType[] = [...CUSTOM_TYPES, ...DATA_CHART_TYPES];
 
 export interface Visual {
   id: string;
   documentId: string;
   sourceText: string;
   visualType: VisualType;
-  renderMode: RenderMode;
-  mermaidSyntax: string;
   customData: string | null;
   theme: VisualTheme;
   createdAt: string;

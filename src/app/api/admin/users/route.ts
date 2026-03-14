@@ -3,14 +3,19 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { requireAdmin, handleApiError } from "@/lib/api/guards";
 import { hashPassword } from "@/lib/auth/passwords";
-import { PASSWORD_MIN_LENGTH } from "@/lib/auth/constants";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { parsePagination, paginationMeta } from "@/lib/api/pagination";
+import { validate } from "@/lib/api/validate";
+import { createUserSchema } from "@/lib/api/schemas";
 
-/** GET /api/admin/users — list all users */
+/** GET /api/admin/users — list all users (paginated) */
 export async function GET(req: NextRequest) {
   try {
     await requireAdmin(req);
+    const { page, limit, offset } = parsePagination(req.nextUrl.searchParams);
+
+    const total = db.select({ count: count() }).from(users).get()!.count;
 
     const allUsers = db
       .select({
@@ -23,9 +28,14 @@ export async function GET(req: NextRequest) {
         updatedAt: users.updatedAt,
       })
       .from(users)
+      .limit(limit)
+      .offset(offset)
       .all();
 
-    return NextResponse.json(allUsers);
+    return NextResponse.json({
+      data: allUsers,
+      pagination: paginationMeta(page, limit, total),
+    });
   } catch (err) {
     return handleApiError(err);
   }
@@ -36,29 +46,10 @@ export async function POST(req: NextRequest) {
   try {
     await requireAdmin(req);
 
-    const body = await req.json();
-    const { username, email, password, role = "user", isActive = false } = body;
-
-    if (!username || !email || !password) {
-      return NextResponse.json(
-        { error: "Username, email, and password are required" },
-        { status: 400 }
-      );
-    }
-
-    if (password.length < PASSWORD_MIN_LENGTH) {
-      return NextResponse.json(
-        { error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters` },
-        { status: 400 }
-      );
-    }
-
-    if (role !== "admin" && role !== "user") {
-      return NextResponse.json(
-        { error: "Role must be 'admin' or 'user'" },
-        { status: 400 }
-      );
-    }
+    const { username, email, password, role, isActive } = validate(
+      createUserSchema,
+      await req.json()
+    );
 
     const existingEmail = db
       .select()

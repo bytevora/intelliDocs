@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { NodeViewWrapper, ReactNodeViewProps } from "@tiptap/react";
-import { MermaidRenderer } from "@/components/visuals/mermaid-renderer";
 import { CustomVisualRenderer } from "@/components/visuals/custom-visual-renderer";
 import { WidgetTextToolbar } from "@/components/visuals/widget-text-toolbar";
 import { exportAsPng, exportAsSvg } from "@/lib/export";
@@ -13,20 +12,13 @@ import {
   VisualTheme,
   CustomVisualType,
   DataChartType,
-  CUSTOM_TYPES,
-  DATA_CHART_TYPES,
-  MERMAID_TYPES,
 } from "@/types";
 import { THEME_OPTIONS } from "@/components/visuals/theme-colors";
 
 // ── Constants ──────────────────────────────────────────────
 
 const TYPE_LABELS: Record<string, string> = {
-  flowchart: "Flowchart",
   mindmap: "Mind Map",
-  timeline: "Timeline",
-  sequence: "Sequence",
-  pie: "Pie Chart",
   comparison: "Comparison",
   funnel: "Funnel",
   stats: "Stats",
@@ -239,9 +231,6 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
     );
   }
 
-  const isCustom = (CUSTOM_TYPES as string[]).includes(visual.visualType) || (DATA_CHART_TYPES as string[]).includes(visual.visualType);
-  const isMermaid = (MERMAID_TYPES as string[]).includes(visual.visualType);
-
   // Submenu direction: flip left if menu is near right edge
   const subCls = ctxMenu && ctxMenu.x > (typeof window !== "undefined" ? window.innerWidth : 1200) - 450
     ? "absolute right-full mr-1 top-0"
@@ -320,7 +309,7 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
 
           {/* ── Visual content ── */}
           <div ref={visualContentRef} className="p-6 pt-12 pb-8">
-            {isCustom && visual.customData ? (
+            {visual.customData ? (
               <CustomVisualRenderer
                 visualType={visual.visualType as CustomVisualType | DataChartType}
                 customData={visual.customData}
@@ -328,7 +317,7 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
                 onCustomDataChange={handleCustomDataChange}
               />
             ) : (
-              <MermaidRenderer syntax={visual.mermaidSyntax} theme={visual.theme} />
+              <div className="text-sm text-muted-foreground text-center py-4">No visual data available</div>
             )}
           </div>
 
@@ -456,7 +445,6 @@ export function VisualBlockView({ node, deleteNode }: ReactNodeViewProps) {
               </button>
             </div>
             <div><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{TYPE_LABELS[visual.visualType]}</span></div>
-            <div><span className="text-muted-foreground">Render:</span> <span className="text-foreground">{visual.renderMode}</span></div>
             <div><span className="text-muted-foreground">Theme:</span> <span className="text-foreground">{visual.theme}</span></div>
             <div><span className="text-muted-foreground">Created:</span> <span className="text-foreground">{new Date(visual.createdAt).toLocaleString()}</span></div>
             <div><span className="text-muted-foreground">Updated:</span> <span className="text-foreground">{new Date(visual.updatedAt).toLocaleString()}</span></div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
@@ -21,17 +22,20 @@ export const metadata: Metadata = {
     "Collaborative document platform with AI-powered visual generation",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") ?? "";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${jakarta.variable} ${geistMono.variable} antialiased`}
+        nonce={nonce}
       >
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} nonce={nonce}>
           <AuthProvider>{children}</AuthProvider>
           <Toaster />
         </ThemeProvider>
