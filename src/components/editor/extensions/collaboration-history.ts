@@ -15,12 +15,9 @@ export const CollaborationHistory = Extension.create({
 
   addKeyboardShortcuts() {
     return {
-      "Mod-z": () =>
-        undo(this.editor.view.state, this.editor.view.dispatch),
-      "Mod-Shift-z": () =>
-        redo(this.editor.view.state, this.editor.view.dispatch),
-      "Mod-y": () =>
-        redo(this.editor.view.state, this.editor.view.dispatch),
+      "Mod-z": () => undo(this.editor.view.state),
+      "Mod-Shift-z": () => redo(this.editor.view.state),
+      "Mod-y": () => redo(this.editor.view.state),
     };
   },
 });
