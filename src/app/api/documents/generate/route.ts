@@ -3,6 +3,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText, stepCountIs } from "ai";
 import { db } from "@/lib/db";
 import { documents, visuals } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { requireAuth, handleApiError } from "@/lib/api/guards";
 import { v4 as uuidv4 } from "uuid";
 import { validate } from "@/lib/api/validate";
@@ -257,9 +258,27 @@ export async function POST(req: NextRequest) {
     const docId = uuidv4();
     const content = parsed.content as any;
 
+    // Insert document first so visuals can reference it (FK constraint)
+    db.insert(documents)
+      .values({
+        id: docId,
+        title: parsed.title,
+        content: JSON.stringify(content),
+        ownerId: user.sub,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
     // ── Auto-insert visuals by analyzing document sections ──
     if (content.content && Array.isArray(content.content)) {
       const sections = extractSections(content.content);
+      console.log("[generate] Total content nodes:", content.content.length);
+      console.log("[generate] Extracted sections:", sections.map(s => ({
+        heading: s.headingText,
+        contentLen: s.contentText.length,
+        insertAfter: s.insertAfterIndex,
+      })));
 
       // Skip the "Conclusion" section, pick up to 3 content sections for visuals
       const eligibleSections = sections.filter(
@@ -272,12 +291,14 @@ export async function POST(req: NextRequest) {
           selectedSections.push(eligibleSections[i]);
         }
       }
+      console.log("[generate] Selected sections for visuals:", selectedSections.length);
 
       // Generate visuals in parallel
       const visualResults = await Promise.allSettled(
         selectedSections.map(async (section) => {
           const visualType = suggestVisualType(section.contentText);
           const hint = `${section.headingText}: ${section.contentText.slice(0, 300)}`;
+          console.log("[generate] Generating visual:", visualType, "for:", section.headingText);
           const genResult = await generateVisual(hint, visualType);
           const visualId = uuidv4();
           db.insert(visuals)
@@ -292,15 +313,23 @@ export async function POST(req: NextRequest) {
               updatedAt: now,
             })
             .run();
+          console.log("[generate] Visual created:", visualId, "type:", genResult.visualType);
           return { visualId, insertAfterIndex: section.insertAfterIndex };
         })
       );
 
       // Insert visual blocks into content (reverse order to preserve indices)
       const successfulVisuals = visualResults
-        .map((r, i) => (r.status === "fulfilled" ? r.value : null))
+        .map((r, i) => {
+          if (r.status === "rejected") {
+            console.error("[generate] Visual generation failed:", r.reason);
+          }
+          return r.status === "fulfilled" ? r.value : null;
+        })
         .filter((v): v is { visualId: string; insertAfterIndex: number } => v !== null)
         .sort((a, b) => b.insertAfterIndex - a.insertAfterIndex);
+
+      console.log("[generate] Successfully generated visuals:", successfulVisuals.length);
 
       for (const { visualId, insertAfterIndex } of successfulVisuals) {
         content.content.splice(insertAfterIndex + 1, 0, {
@@ -308,22 +337,23 @@ export async function POST(req: NextRequest) {
           attrs: { visualId },
         });
       }
+
+      // Verify visualBlocks are in final content
+      const visualBlockCount = content.content.filter((n: any) => n.type === "visualBlock").length;
+      console.log("[generate] Final content visualBlock count:", visualBlockCount);
+    } else {
+      console.log("[generate] No content.content array found — skipping visual insertion");
     }
 
-    const newDoc = {
-      id: docId,
-      title: parsed.title,
-      content: JSON.stringify(content),
-      ownerId: user.sub,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    db.insert(documents).values(newDoc).run();
+    // Update document content with visual blocks spliced in
+    db.update(documents)
+      .set({ content: JSON.stringify(content), updatedAt: new Date().toISOString() })
+      .where(eq(documents.id, docId))
+      .run();
 
     return NextResponse.json(
       {
-        id: newDoc.id,
+        id: docId,
         title: parsed.title,
         icon: parsed.icon || "📄",
       },
