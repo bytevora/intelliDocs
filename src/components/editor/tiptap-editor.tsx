@@ -6,9 +6,8 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import { CollaborationCursorFixed } from "./extensions/collaboration-cursor-fixed";
 import { VisualBlock } from "./extensions/visual-block";
-import { CollaborationHistory } from "./extensions/collaboration-history";
 import { VisualSuggestions } from "./visual-suggestions";
 import { GenerateVisualMenu } from "./generate-visual-menu";
 import { CategoriesPanel } from "@/components/visuals/categories-panel";
@@ -33,6 +32,7 @@ interface StandaloneProps extends TiptapEditorBaseProps {
 interface CollaborativeProps extends TiptapEditorBaseProps {
   ydoc: Y.Doc;
   provider: SocketIOProvider;
+  initialContent?: object;
   content?: undefined;
   onUpdate?: undefined;
 }
@@ -60,14 +60,13 @@ export function TiptapEditor(props: TiptapEditorProps) {
           document: props.ydoc!,
           field: "default",
         }),
-        CollaborationCursor.configure({
+        CollaborationCursorFixed.configure({
           provider: props.provider!,
           user: props.provider!.awareness.getLocalState()?.user ?? {
             name: "Anonymous",
             color: "#958DF1",
           },
         }),
-        CollaborationHistory,
       ]
     : [
         StarterKit,
@@ -81,7 +80,16 @@ export function TiptapEditor(props: TiptapEditorProps) {
       editable,
       extensions,
       ...(isCollaborative
-        ? {}
+        ? {
+            onCreate: ({ editor: e }) => {
+              // If the Yjs fragment is empty (no prior collaborative state),
+              // populate it from the saved content so it's not blank.
+              const fragment = props.ydoc!.getXmlFragment("default");
+              if (fragment.length === 0 && props.initialContent) {
+                e.commands.setContent(props.initialContent);
+              }
+            },
+          }
         : {
             content: props.content,
             onUpdate: ({ editor }) => {

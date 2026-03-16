@@ -239,7 +239,6 @@ async function generateFromPrompt(
 
   const model = genAI.getGenerativeModel({
     model: GEMINI_MODEL,
-    tools: [{ googleSearch: {} } as any],
     generationConfig: {
       temperature: 0.3,
       maxOutputTokens: 2000,

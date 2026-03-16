@@ -402,6 +402,7 @@ export default function DocumentEditorPage({
                         ydoc={ydoc}
                         provider={provider}
                         editable={editable}
+                        initialContent={content ?? undefined}
                       />
                     </DocumentProvider>
                   </EditorErrorBoundary>

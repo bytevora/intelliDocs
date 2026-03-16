@@ -1,5 +1,5 @@
 import { Extension } from "@tiptap/react";
-import { yUndoPlugin, undoCommand, redoCommand } from "y-prosemirror";
+import { yUndoPlugin, undo, redo } from "@tiptap/y-tiptap";
 
 /**
  * Adds Yjs-based undo/redo for collaborative editing.
@@ -16,11 +16,11 @@ export const CollaborationHistory = Extension.create({
   addKeyboardShortcuts() {
     return {
       "Mod-z": () =>
-        undoCommand(this.editor.view.state, this.editor.view.dispatch),
+        undo(this.editor.view.state, this.editor.view.dispatch),
       "Mod-Shift-z": () =>
-        redoCommand(this.editor.view.state, this.editor.view.dispatch),
+        redo(this.editor.view.state, this.editor.view.dispatch),
       "Mod-y": () =>
-        redoCommand(this.editor.view.state, this.editor.view.dispatch),
+        redo(this.editor.view.state, this.editor.view.dispatch),
     };
   },
 });

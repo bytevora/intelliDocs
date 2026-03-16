@@ -96,7 +96,12 @@
       "Bash(node -e \"console.log\\(require\\('@tiptap/extension-collaboration-cursor/package.json'\\).version\\)\" 2>&1)",
       "Bash(grep -r \"script-src\\\\|style-src\" /Users/rohitranjan/my/temp/intelliDocs --include=\"*.ts\" --include=\"*.tsx\" --include=\"*.json\" --include=\"*.js\" --include=\"*.jsx\" 2>/dev/null | grep -v node_modules | grep -v \".next\")",
       "Bash(node -e \"\nconst yTiptap = require\\('@tiptap/y-tiptap'\\);\nconsole.log\\('y-tiptap exports:', Object.keys\\(yTiptap\\).filter\\(k => k.includes\\('ursor'\\) || k.includes\\('Cursor'\\)\\)\\);\n\" 2>&1)",
-      "Bash(grep -r \"GoogleGenerativeAI\\\\|genAI\\\\|GEMINI\" /Users/rohitranjan/my/temp/intelliDocs/src --include=*.ts --include=*.tsx)"
+      "Bash(grep -r \"GoogleGenerativeAI\\\\|genAI\\\\|GEMINI\" /Users/rohitranjan/my/temp/intelliDocs/src --include=*.ts --include=*.tsx)",
+      "Bash(find /Users/rohitranjan/my/temp/intelliDocs -path \"*/node_modules\" -prune -o -name \"schema*\" -type f -print | grep -E \"\\\\.\\(ts|js\\)$\")",
+      "Bash(ls /Users/rohitranjan/my/temp/intelliDocs/.env*)",
+      "WebSearch",
+      "Bash(cat package.json | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}, indent=2\\)\\)\" | grep -iE \"ai|google|genai\")",
+      "Bash(cat node_modules/@ai-sdk/google/package.json | python3 -c \"import sys,json; print\\(json.load\\(sys.stdin\\)['version']\\)\")"
     ]
   },
   "enabledPlugins": {
